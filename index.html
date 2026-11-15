@@ -169,6 +169,10 @@
     <label for="opName">Operasjon (f.eks. ROV basket IT, Subsea module)</label>
     <input type="text" id="opName" placeholder="Skriv inn operasjon..." oninput="setName()" />
   </div>
+  <div style="margin-bottom:10px;">
+    <label for="liftComment">Comments (f.eks. MB RB, RT, TB)</label>
+    <input type="text" id="liftComment" placeholder="Initialer / kommentar..." oninput="setComment()" />
+  </div>
 
   <div class="grid3" style="margin-bottom:8px;">
     <div class="mini"><span>STARTTID</span><strong id="liveStart">--:--</strong></div>
@@ -364,6 +368,7 @@ function craneStop() { act(() => { if (doCraneStop(takeManTime())) toast('Kran s
 function ahcStart() { act(() => { const r = doAhcStart(takeManTime()); if (r.started) toast(r.autoCrane ? 'AHC startet (kran startet også)' : 'AHC startet'); }); }
 function ahcStop() { act(() => { if (doAhcStop(takeManTime())) toast('AHC stoppet'); }); }
 
+function setComment() { L().comment = document.getElementById('liftComment').value; save(); renderReportOnly(); }
 function setName() { L().name = document.getElementById('opName').value; save(); renderReportOnly(); }
 
 /* ================= AVLESNINGER ================= */
@@ -404,18 +409,23 @@ function summarize(readings) {
 }
 function currentSummary() {
   const now = Date.now(), l = L();
-  return Object.assign({ name: l.name, start: l.start, end: l.craneOpen ? null : l.end || null,
+  return Object.assign({ name: l.name, comment: l.comment || '', start: l.start, end: l.craneOpen ? null : l.end || null,
     craneMs: liftCraneMs(now), ahcMs: liftAhcMs(now) }, summarize(l.readings));
 }
+// Samme felt og format som i PC-loggen (Operation log): hele meter, tonn, timer med desimaler
 function reportFields(s) {
-  const hc = s.hcMin != null ? fmtNum(s.hcMin) + ' – ' + fmtNum(s.hcMax) : null;
+  const m = v => String(Math.round(v));
+  const hc = s.hcMin != null ? m(s.hcMin) + ' - ' + m(s.hcMax) : null;
+  const dt = s.start ? date(s.start) + ' ' + clock(s.start) : null;
   return [
+    ['Date/time', dt || '–', dt || ''],
     ['Operation type', 'Subsea Lift', 'Subsea Lift'],
     ['Total use time', decH(s.craneMs) + ' hours', decH(s.craneMs)],
-    ['Max tension in hook during operation', s.maxHook != null ? fmtNum(s.maxHook) + ' t' : '–', s.maxHook != null ? fmtNum(s.maxHook) : ''],
-    ['Max wire paid out during operation', s.maxDepth != null ? fmtNum(s.maxDepth) + ' m' : '–', s.maxDepth != null ? fmtNum(s.maxDepth) : ''],
+    ['Max tension in hook during operation', s.maxHook != null ? fmtNum(s.maxHook) + ' ton' : '–', s.maxHook != null ? fmtNum(s.maxHook) : ''],
+    ['Max wire paid out during operation', s.maxDepth != null ? m(s.maxDepth) + ' m' : '–', s.maxDepth != null ? m(s.maxDepth) : ''],
     ['Wire paid out during HC/CT', hc ? hc + ' m' : (s.ahcMs > 0 ? '–' : 'N/A'), hc || ''],
-    ['Use time in HC/CT', decH(s.ahcMs) + ' hours', decH(s.ahcMs)]
+    ['Use time in HC/CT', decH(s.ahcMs) + ' hours', decH(s.ahcMs)],
+    ['Comments', s.comment || '–', s.comment || '']
   ];
 }
 function reportText(s) {
@@ -444,7 +454,7 @@ function saveLift() {
   } else if (!confirm('Lagre løftet i historikken og starte nytt?\nIMCA-timene beholdes.')) return;
   const s = currentSummary();
   state.history.unshift({
-    id: now, name: (l.name || '').trim() || 'Subsea Lift', start: l.start, end: l.end || null,
+    id: now, name: (l.name || '').trim() || 'Subsea Lift', comment: (l.comment || '').trim(), start: l.start, end: l.end || null,
     craneMs: s.craneMs, ahcMs: s.ahcMs, maxHook: s.maxHook, maxDepth: s.maxDepth, hcMin: s.hcMin, hcMax: s.hcMax,
     readings: l.readings
   });
@@ -468,7 +478,7 @@ function resetTrip() {
 }
 
 /* ================= VISNING ================= */
-function fillInputs() { document.getElementById('opName').value = L().name || ''; }
+function fillInputs() { document.getElementById('opName').value = L().name || ''; document.getElementById('liftComment').value = L().comment || ''; }
 
 function render() {
   const now = Date.now(), l = L();
