@@ -263,22 +263,8 @@ function blankLift() {
   return { name: '', start: null, craneAccum: 0, craneOpen: null, ahcAccum: 0, ahcOpen: null, readings: [] };
 }
 function seedState() {
-  // Forhåndsutfylt med vaktens tall
-  const s1 = new Date(2026, 10, 14, 14, 45).getTime();
-  const e1 = new Date(2026, 10, 14, 22, 57).getTime();
-  return {
-    v: 1,
-    tripStart: new Date(2026, 10, 14, 0, 0).getTime(),
-    imca: { craneMs: 522 * MIN, ahcMs: 52 * MIN },
-    lift: blankLift(),
-    history: [
-      { id: 2, name: 'Handover-økt (Løft nr. 2)', start: null, end: null, craneMs: 30 * MIN, ahcMs: 0,
-        maxHook: 0.9, maxDepth: 1176.2, hcMin: null, hcMax: null },
-      { id: 1, name: 'ROV basket IT', start: s1, end: e1, craneMs: 492 * MIN, ahcMs: 52 * MIN,
-        maxHook: 1.7, maxDepth: 1795, hcMin: 1740, hcMax: 1795 }
-    ],
-    undo: null
-  };
+  // Ny bruker: starter på 00:00 med tom historikk
+  return { v: 1, tripStart: Date.now(), imca: { craneMs: 0, ahcMs: 0 }, lift: blankLift(), history: [], undo: null };
 }
 
 let state = loadState();
