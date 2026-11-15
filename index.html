@@ -763,16 +763,30 @@ async function readNovScreen(file, show) {
   const wireLb = findLabel(words, [/^W[I1L|]RE$/i, /^PA[I1L|]D$/i, /^[O0]UT$/i]);
   if (wireLb) { out.raw.depth = await readCrop(w, img.grayCanvas, valueRect(wireLb), true); out.depth = parseBoxNumber(out.raw.depth, 0, 5000); }
 
-  // Status: boksen under «WINCH CRUISE CONTROL» (NORMAL - MODE / AHC ...)
-  const wcc = findLabel(words, [/^W[I1L]NCH$/, /^CRU[I1L]SE$/, /^C[O0]NTR[O0]L$/]);
-  if (wcc) {
-    // Alle mål regnes fra bredden på «WINCH CRUISE CONTROL» (høyden kan bli feil når ord flyter sammen)
-    const lw = wcc.x1 - wcc.x0, cx = (wcc.x0 + wcc.x1) / 2, cyl = (wcc.y0 + wcc.y1) / 2;
-    out.raw.status = await readCrop(w, img.grayCanvas, { x0: cx - 0.85 * lw, x1: cx + 0.85 * lw, y0: cyl + 0.09 * lw, y1: cyl + 0.30 * lw }, false);
+  // Status- og klokkeboks finnes ut fra den faste toppdelen som er lik på alle NOV-sidene
+  // («LOAD MW» over «Slew angle»), så det virker både på WINCH CRUISE CONTROL- og MAIN WINCH-siden.
+  // Enhet u = avstanden fra «LOAD MW» ned til «Slew angle». Origo = venstre kant av «Slew angle».
+  let geo = null;
+  const loadLb = findLabel(words, [/^L[O0]AD$/i, /^MW$/i]);
+  const slewLb = findLabel(words, [/^S[I1L|]EW$/i, /^ANG[I1L|]E$/i]);
+  if (slewLb) {
+    let u = loadLb ? cy(slewLb) - cy(loadLb) : 0;
+    const lh = slewLb.y1 - slewLb.y0, sw = slewLb.x1 - slewLb.x0;
+    if (!(u > sw * 0.45 && u < sw * 1.2)) u = sw * 0.72; // reserve: «Slew angle» er ca. 1,4 u bred
+    geo = { ox: slewLb.x0, oy: cy(slewLb), u };
+  } else {
+    const wcc = findLabel(words, [/^W[I1L]NCH$/, /^CRU[I1L]SE$/, /^C[O0]NTR[O0]L$/]);
+    if (wcc) { // reserve: regn om fra «WINCH CRUISE CONTROL»
+      const lw = wcc.x1 - wcc.x0, cx = (wcc.x0 + wcc.x1) / 2;
+      geo = { ox: cx - 0.63 * lw, oy: cy(wcc) - 0.165 * lw, u: 0.25 * lw };
+    }
+  }
+  if (geo) {
+    const R = (x0, x1, y0, y1) => ({ x0: geo.ox + x0 * geo.u, x1: geo.ox + x1 * geo.u, y0: geo.oy + y0 * geo.u, y1: geo.oy + y1 * geo.u });
+    out.raw.status = await readCrop(w, img.grayCanvas, R(-0.9, 6.4, 1.13, 1.62), false);
     out.status = statusFromText(out.raw.status);
-    // Klokka står i boksen øverst til høyre, fast plassert i forhold til «WINCH CRUISE CONTROL»
-    // Klokkeboksen (øverst til høyre) har svak, tynn skrift -> prøv flere bildebehandlinger og ta et tidspunkt som stemmer med nå (±30 min)
-    const ckRect = { x0: cx + 1.08 * lw, x1: cx + 2.02 * lw, y0: cyl - 0.93 * lw, y1: cyl - 0.75 * lw };
+    // Klokkeboksen har svak, tynn skrift -> prøv flere bildebehandlinger, godta tid innen ±30 min fra nå
+    const ckRect = R(6.8, 10.5, -2.88, -2.42);
     const variants = [{ scale: 4, adapt: 8, dilate: true, blur: 2 }, { scale: 5, adapt: 8, blur: 3 }, { scale: 4, adapt: 5, blur: 2 },
                       { scale: 4, adapt: 8 }, { scale: 3 }];
     const seen = [];
