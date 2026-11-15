@@ -689,13 +689,14 @@ const cy = b => (b.y0 + b.y1) / 2;
 const sameRow = (a, b) => Math.abs(cy(a) - cy(b)) < Math.max(a.y1 - a.y0, b.y1 - b.y0) * 0.8;
 // Finn en etikett som består av flere ord etter hverandre på samme rad
 function findLabel(words, res, reject) {
+  const T = w => w.text.replace(/[^A-Za-z0-9|]/g, ''); // fjern «, “, : osv. som OCR legger til
   for (let i = 0; i < words.length; i++) {
-    if (!res[0].test(words[i].text)) continue;
+    if (!res[0].test(T(words[i]))) continue;
     let k = i, ok = true, parts = [words[i].bbox];
     for (let n = 1; n < res.length; n++) {
       let found = -1;
       for (let j = k + 1; j <= Math.min(words.length - 1, k + 3); j++) {
-        if (res[n].test(words[j].text) && sameRow(words[j].bbox, words[i].bbox) && words[j].bbox.x0 > words[k].bbox.x0) { found = j; break; }
+        if (res[n].test(T(words[j])) && sameRow(words[j].bbox, words[i].bbox) && words[j].bbox.x0 > words[k].bbox.x0) { found = j; break; }
       }
       if (found < 0) { ok = false; break; }
       k = found; parts.push(words[found].bbox);
@@ -763,6 +764,16 @@ async function readNovScreen(file, show) {
   const wireLb = findLabel(words, [/^W[I1L|]RE$/i, /^PA[I1L|]D$/i, /^[O0]UT$/i]);
   if (wireLb) { out.raw.depth = await readCrop(w, img.grayCanvas, valueRect(wireLb), true); out.depth = parseBoxNumber(out.raw.depth, 0, 5000); }
 
+  // Statusboksen direkte: ordet «MODE» lengst ned (det øverst er «HPU NORMAL MODE»)
+  const modes = words.filter(x => /^M[O0]DE$/.test(x.text.replace(/[^A-Za-z0-9]/g, '')) && cy(x.bbox) > img.H * 0.12)
+    .sort((a, b) => cy(b.bbox) - cy(a.bbox));
+  if (modes.length) {
+    const m = modes[0].bbox, h = m.y1 - m.y0;
+    out.raw.status = await readCrop(w, img.grayCanvas, { x0: m.x1 - 17 * h, x1: m.x1 + 0.6 * h, y0: cy(m) - 1.0 * h, y1: cy(m) + 1.0 * h }, false);
+    out.status = statusFromText(out.raw.status);
+    if (out.status === 'AHC' && !/AHC|HC|CT|EMPTY|H[O0]{2}K/i.test(out.raw.status)) out.status = null; // bare «MODE» lest -> usikkert
+  }
+
   // Status- og klokkeboks finnes ut fra den faste toppdelen som er lik på alle NOV-sidene
   // («LOAD MW» over «Slew angle»), så det virker både på WINCH CRUISE CONTROL- og MAIN WINCH-siden.
   // Enhet u = avstanden fra «LOAD MW» ned til «Slew angle». Origo = venstre kant av «Slew angle».
@@ -774,6 +785,12 @@ async function readNovScreen(file, show) {
     const lh = slewLb.y1 - slewLb.y0, sw = slewLb.x1 - slewLb.x0;
     if (!(u > sw * 0.45 && u < sw * 1.2)) u = sw * 0.72; // reserve: «Slew angle» er ca. 1,4 u bred
     geo = { ox: slewLb.x0, oy: cy(slewLb), u };
+  } else if (loadLb) { // bare «LOAD MW» funnet: bruk «Radius» rett under for å finne skalaen
+    const lw = loadLb.x1 - loadLb.x0;
+    const rad = words.find(x => /^RAD[I1L|]US$/i.test(x.text.replace(/[^A-Za-z0-9|]/g, '')) &&
+      Math.abs(x.bbox.x0 - loadLb.x0) < lw * 0.6 && cy(x.bbox) > cy(loadLb) && cy(x.bbox) - cy(loadLb) < lw);
+    const u = rad ? 2 * (cy(rad.bbox) - cy(loadLb)) : lw * 0.62;
+    geo = { ox: loadLb.x0, oy: cy(loadLb) + u, u };
   } else {
     const wcc = findLabel(words, [/^W[I1L]NCH$/, /^CRU[I1L]SE$/, /^C[O0]NTR[O0]L$/]);
     if (wcc) { // reserve: regn om fra «WINCH CRUISE CONTROL»
@@ -783,8 +800,10 @@ async function readNovScreen(file, show) {
   }
   if (geo) {
     const R = (x0, x1, y0, y1) => ({ x0: geo.ox + x0 * geo.u, x1: geo.ox + x1 * geo.u, y0: geo.oy + y0 * geo.u, y1: geo.oy + y1 * geo.u });
-    out.raw.status = await readCrop(w, img.grayCanvas, R(-0.9, 6.4, 1.13, 1.62), false);
-    out.status = statusFromText(out.raw.status);
+    if (!out.status) {
+      out.raw.status = await readCrop(w, img.grayCanvas, R(-0.9, 6.4, 1.13, 1.62), false);
+      out.status = statusFromText(out.raw.status);
+    }
     // Klokkeboksen har svak, tynn skrift -> prøv flere bildebehandlinger, godta tid innen ±30 min fra nå
     const ckRect = R(6.8, 10.5, -2.88, -2.42);
     const variants = [{ scale: 4, adapt: 8, dilate: true, blur: 2 }, { scale: 5, adapt: 8, blur: 3 }, { scale: 4, adapt: 5, blur: 2 },
