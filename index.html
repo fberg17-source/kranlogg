@@ -583,14 +583,53 @@ const OCR_STEPS = { 'loading tesseract core': 'Laster OCR-motor', 'initializing 
   'initialized api': 'Klar', 'recognizing text': 'Leser NOV-skjerm' };
 
 // Les bildet til gråtoner (maks 2600 px)
-function loadGray(file) {
+function findScreen(img) {
+  const full = { x: 0, y: 0, w: img.width, h: img.height };
+  try {
+    const k = 200 / Math.max(img.width, img.height), w = Math.round(img.width * k), h = Math.round(img.height * k);
+    const c = document.createElement('canvas'); c.width = w; c.height = h;
+    const ctx = c.getContext('2d'); ctx.imageSmoothingQuality = 'high'; ctx.drawImage(img, 0, 0, w, h);
+    const p = ctx.getImageData(0, 0, w, h).data, g = new Uint8Array(w * h), hist = new Array(256).fill(0);
+    for (let i = 0, j = 0; j < g.length; i += 4, j++) { g[j] = 0.299 * p[i] + 0.587 * p[i + 1] + 0.114 * p[i + 2]; hist[g[j]]++; }
+    let sum = 0; for (let i = 0; i < 256; i++) sum += i * hist[i];
+    let sB = 0, wB = 0, best = 0, th = 128;
+    for (let i = 0; i < 256; i++) { wB += hist[i]; if (!wB) continue; const wF = g.length - wB; if (!wF) break;
+      sB += i * hist[i]; const v = wB * wF * Math.pow(sB / wB - (sum - sB) / wF, 2); if (v > best) { best = v; th = i; } }
+    // største sammenhengende lyse område
+    const lab = new Int32Array(w * h).fill(-1); let bestBox = null, bestN = 0;
+    for (let start = 0; start < g.length; start++) {
+      if (g[start] <= th || lab[start] >= 0) continue;
+      const stack = [start]; lab[start] = start; let n = 0, x0 = w, x1 = 0, y0 = h, y1 = 0;
+      while (stack.length) {
+        const q = stack.pop(), x = q % w, y = (q / w) | 0; n++;
+        if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y;
+        for (const nb of [q - 1, q + 1, q - w, q + w]) {
+          if (nb < 0 || nb >= g.length || lab[nb] >= 0 || g[nb] <= th) continue;
+          if ((nb === q - 1 && x === 0) || (nb === q + 1 && x === w - 1)) continue;
+          lab[nb] = start; stack.push(nb);
+        }
+      }
+      if (n > bestN) { bestN = n; bestBox = { x0, x1, y0, y1 }; }
+    }
+    if (!bestBox) return full;
+    const bw = bestBox.x1 - bestBox.x0 + 1, bh = bestBox.y1 - bestBox.y0 + 1;
+    if (bw * bh < w * h * 0.12 || bw * bh > w * h * 0.9) return full; // usikkert -> bruk hele bildet
+    const m = 0.10;
+    const x = Math.max(0, (bestBox.x0 - bw * m) / k), y = Math.max(0, (bestBox.y0 - bh * m) / k);
+    return { x, y, w: Math.min(img.width - x, bw * (1 + 2 * m) / k), h: Math.min(img.height - y, bh * (1 + 2 * m) / k) };
+  } catch (e) { return full; }
+}
+function loadGray(file, crop) {
   return new Promise((res, rej) => {
     const img = new Image(), url = URL.createObjectURL(file);
     img.onload = () => {
-      const scale = Math.min(2, 2600 / Math.max(img.width, img.height));
-      const W = Math.round(img.width * scale), H = Math.round(img.height * scale);
+      // Finn NOV-skjermen i bildet (største lyse flate) og klipp til den, så tallene blir store nok
+      // også når bildet er tatt på avstand med ramme og vinduer rundt.
+      const sc = crop ? findScreen(img) : { x: 0, y: 0, w: img.width, h: img.height };
+      const scale = Math.min(2.5, 2600 / Math.max(sc.w, sc.h));
+      const W = Math.round(sc.w * scale), H = Math.round(sc.h * scale);
       const c = document.createElement('canvas'); c.width = W; c.height = H;
-      const ctx = c.getContext('2d'); ctx.imageSmoothingQuality = 'high'; ctx.drawImage(img, 0, 0, W, H);
+      const ctx = c.getContext('2d'); ctx.imageSmoothingQuality = 'high'; ctx.drawImage(img, sc.x, sc.y, sc.w, sc.h, 0, 0, W, H);
       const d = ctx.getImageData(0, 0, W, H), p = d.data, gray = new Uint8ClampedArray(W * H);
       for (let i = 0, j = 0; j < gray.length; i += 4, j++) {
         const g = 0.299 * p[i] + 0.587 * p[i + 1] + 0.114 * p[i + 2];
@@ -740,8 +779,8 @@ function statusFromText(s) {
   return null;
 }
 
-async function readNovScreen(file, show) {
-  const img = await loadGray(file);
+async function readNovScreen(file, show, crop) {
+  const img = await loadGray(file, crop);
   if (!window.Tesseract && !navigator.onLine) throw new Error('Ingen nettforbindelse. OCR må lastes fra nett første gang – skriv inn verdiene manuelt.');
   show('Laster OCR...', img.url);
   ocrProgress = m => show((OCR_STEPS[m.status] || m.status) + '... ' + Math.round((m.progress || 0) * 100) + ' %', img.url);
@@ -760,6 +799,7 @@ async function readNovScreen(file, show) {
     const prev = words[i - 1];
     return prev && /ABLE|ALLOW|^AL/i.test(prev.text) && sameRow(prev.bbox, b) && b.x0 - prev.bbox.x1 < (b.y1 - b.y0) * 2;
   });
+  out.labelH = hookLb ? hookLb.y1 - hookLb.y0 : 0; // teksthøyde – liten = bildet tatt på avstand
   if (hookLb) { out.raw.hook = await readCrop(w, img.grayCanvas, valueRect(hookLb), true); out.hook = parseBoxNumber(out.raw.hook, 0, 400); }
   const wireLb = findLabel(words, [/^W[I1L|]RE$/i, /^PA[I1L|]D$/i, /^[O0]UT$/i]);
   if (wireLb) { out.raw.depth = await readCrop(w, img.grayCanvas, valueRect(wireLb), true); out.depth = parseBoxNumber(out.raw.depth, 0, 5000); }
@@ -852,7 +892,13 @@ async function handleImage(ev) {
   show('Bilde mottatt (' + Math.round(file.size / 1024) + ' kB) – behandler...');
   box.scrollIntoView({ behavior: 'smooth', block: 'center' });
   try {
-    const r = await readNovScreen(file, show);
+    let r = await readNovScreen(file, show, false);
+    const score = x => (x.hook != null) + (x.depth != null) + (x.status != null) + (x.clock != null);
+    if (r.hook == null || r.depth == null || r.status == null || r.labelH < 30) {
+      // Bildet er trolig tatt på avstand: prøv igjen med bare skjermen klippet ut og forstørret
+      show('Prøver igjen med skjermen forstørret...', r.url);
+      try { const r2 = await readNovScreen(file, show, true); if (score(r2) > score(r) || (r.labelH < 30 && score(r2) >= score(r))) r = r2; } catch (e) {}
+    }
     let t = r.clock && r.clock.t != null ? r.clock.t : null;
     const usedScreenTime = t != null && Math.abs(Date.now() - t) < 30 * MIN;
     if (!usedScreenTime) t = Date.now();
