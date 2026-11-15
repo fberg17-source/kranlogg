@@ -109,6 +109,13 @@
     .file-btn:active { transform: scale(0.98); }
     .btn-outline-big { background: transparent; border: 2px solid var(--amber); color: #fcd34d; font-size: 1rem; padding: 14px 12px; }
     .vh { position: absolute; width: 1px; height: 1px; opacity: 0; overflow: hidden; left: 0; top: 0; }
+    .crane-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 14px; }
+    .crane-tabs button { padding: 14px 8px; font-size: 1.05rem; background: var(--card); border: 2px solid var(--card-border); color: var(--muted); }
+    .crane-tabs button.on { background: #3f2a06; border-color: var(--amber); color: #fcd34d; }
+    .winch-tabs { margin-top: -6px; }
+    .winch-tabs button { padding: 10px 8px; font-size: 0.95rem; }
+    .winch-tabs button.on { background: #082f49; border-color: var(--blue); color: #7dd3fc; }
+    .crane-tabs .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: var(--green); margin-left: 6px; vertical-align: middle; }
     .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); max-width: 90%; text-align: center;
       padding: 11px 16px; border-radius: 10px; font-weight: 700; font-size: 0.92rem; opacity: 0; transition: opacity 0.2s; pointer-events: none; z-index: 10; }
     .toast.show { opacity: 1; }
@@ -126,17 +133,27 @@
       <text x="50" y="75" font-family="sans-serif" font-weight="bold" font-size="14" fill="#ffffff" text-anchor="middle">350t AHC</text>
     </svg>
     <div>
-      <div class="sub">NOV 350t AHC CRANE</div>
+      <div class="sub" id="craneTitle">NOV 350t AHC CRANE</div>
       <h1>Subsea Kranlogg</h1>
     </div>
   </div>
   <div id="netBadge" class="net net-on">ONLINE</div>
 </header>
 
+<!-- KRANVALG -->
+<div class="crane-tabs">
+  <button id="tab350" onclick="switchCrane('350', null)">350t AHC-kran</button>
+  <button id="tab50" onclick="switchCrane('50', null)">50t-kran</button>
+</div>
+<div class="crane-tabs winch-tabs">
+  <button id="tabMW" onclick="switchCrane(null, 'MW')">Main winch (MW)</button>
+  <button id="tabAW" onclick="switchCrane(null, 'AW')">Aux winch (AW)</button>
+</div>
+
 <!-- 1. IMCA KRANLOGGBOK -->
 <section class="card imca">
   <div class="card-title">
-    <span>IMCA Kranloggbok – hele turen</span>
+    <span id="imcaTitle">IMCA Kranloggbok – hele turen</span>
     <span style="color:var(--amber)">KUN MANUELL NULLSTILLING</span>
   </div>
   <div class="grid2">
@@ -251,6 +268,11 @@
       <button class="btn-outline" onclick="document.getElementById('importInput').click()">Gjenopprett</button>
     </div>
     <input type="file" id="importInput" accept="application/json,.json" style="display:none" onchange="importJson(event)" />
+    <label for="swapTarget" style="margin-top:4px">Ført på feil kran/vinsj? Bytt dataene med:</label>
+    <div class="row">
+      <select id="swapTarget" style="width:100%;background:var(--inset);border:1px solid var(--card-border);color:#fff;padding:11px;border-radius:8px;font-size:0.95rem"></select>
+      <button class="btn-outline" onclick="swapCranes()">⇄ Bytt</button>
+    </div>
     <div class="hint">Alt lagres kun i nettleseren på denne telefonen. Ta backup før nullstilling, telefonbytte eller tømming av nettleserdata.</div>
   </details>
 </section>
@@ -271,16 +293,32 @@ function seedState() {
   return { v: 1, tripStart: Date.now(), imca: { craneMs: 0, ahcMs: 0 }, lift: blankLift(), history: [], undo: null };
 }
 
-let state = loadState();
-function loadState() {
+// Hver kran (350t og 50t) har sin egen IMCA-logg, sitt aktive løft og sin historikk.
+// Én logg per kran og vinsj (wire): 350t MW/AW og 50t MW/AW
+const CRANES = {
+  '350-MW': { crane: '350', winch: 'MW', title: 'NOV 350t AHC – MAIN WINCH', short: '350t MW' },
+  '350-AW': { crane: '350', winch: 'AW', title: 'NOV 350t AHC – AUX WINCH', short: '350t AW' },
+  '50-MW':  { crane: '50',  winch: 'MW', title: 'NOV 50t – MAIN WINCH', short: '50t MW' },
+  '50-AW':  { crane: '50',  winch: 'AW', title: 'NOV 50t – AUX WINCH', short: '50t AW' }
+};
+const isCraneState = s => s && s.imca && s.lift && Array.isArray(s.history);
+let root = loadRoot();
+let state = root.cranes[root.active];
+function loadRoot() {
+  let r = null;
   try {
-    const raw = localStorage.getItem(KEY);
-    if (raw) { const s = JSON.parse(raw); if (s && s.imca && s.lift && Array.isArray(s.history)) return s; }
+    const s = JSON.parse(localStorage.getItem(KEY));
+    if (s && s.v === 2 && s.cranes) r = s;
+    else if (isCraneState(s)) r = { v: 2, active: '350-MW', cranes: { '350-MW': s } }; // gammel versjon: dataene var for 350t main winch
   } catch (e) {}
-  return seedState();
+  if (!r) r = { v: 2, active: '350-MW', cranes: {} };
+  for (const k of Object.keys(CRANES)) if (!isCraneState(r.cranes[k])) r.cranes[k] = seedState();
+  if (!CRANES[r.active]) r.active = '350-MW';
+  return r;
 }
 function save() {
-  try { localStorage.setItem(KEY, JSON.stringify(state)); }
+  root.cranes[root.active] = state;
+  try { localStorage.setItem(KEY, JSON.stringify(root)); }
   catch (e) { toast('Kunne ikke lagre – ta backup!', true); }
 }
 function snapshot() { const c = JSON.parse(JSON.stringify(state)); c.undo = null; return c; }
@@ -368,6 +406,22 @@ function craneStop() { act(() => { if (doCraneStop(takeManTime())) toast('Kran s
 function ahcStart() { act(() => { const r = doAhcStart(takeManTime()); if (r.started) toast(r.autoCrane ? 'AHC startet (kran startet også)' : 'AHC startet'); }); }
 function ahcStop() { act(() => { if (doAhcStop(takeManTime())) toast('AHC stoppet'); }); }
 
+function switchCrane(crane, winch) {
+  const cur = CRANES[root.active];
+  const k = (crane || cur.crane) + '-' + (winch || cur.winch);
+  if (!CRANES[k] || k === root.active) return;
+  save(); root.active = k; state = root.cranes[k]; save();
+  document.getElementById('ocrBox').style.display = 'none';
+  fillInputs(); render(); toast('Byttet til ' + CRANES[k].short);
+}
+function swapCranes() {
+  const other = document.getElementById('swapTarget').value;
+  if (!CRANES[other] || other === root.active) return;
+  const a = root.cranes[root.active], b = root.cranes[other];
+  if (a.lift.craneOpen || b.lift.craneOpen) { toast('Stopp kranen først', true); return; }
+  if (!confirm('Bytte all data (IMCA, aktivt løft og historikk) mellom ' + CRANES[root.active].short + ' og ' + CRANES[other].short + '?')) return;
+  save(); root.cranes[root.active] = b; root.cranes[other] = a; state = root.cranes[root.active]; save(); fillInputs(); render(); toast('Dataene er byttet');
+}
 function setComment() { L().comment = document.getElementById('liftComment').value; save(); renderReportOnly(); }
 function setName() { L().name = document.getElementById('opName').value; save(); renderReportOnly(); }
 
@@ -430,6 +484,7 @@ function reportFields(s) {
 }
 function reportText(s) {
   const head = [];
+  head.push('Kran: ' + CRANES[root.active].short);
   if (s.name) head.push('Operasjon: ' + s.name + (s.start ? ' (' + date(s.start) + ')' : ''));
   if (s.start) head.push('Krantid: ' + clock(s.start) + ' – ' + (s.end ? clock(s.end) : 'pågår') + ' (' + hm(s.craneMs) + ')');
   return (head.length ? head.join('\n') + '\n\n' : '') + reportFields(s).map(f => f[0] + ': ' + f[1]).join('\n');
@@ -470,7 +525,7 @@ function copyHistory(id) { const h = state.history.find(x => x.id === id); if (h
 
 function resetTrip() {
   if (L().craneOpen || L().ahcOpen) { toast('Stopp kran/AHC først', true); return; }
-  if (!confirm('Nullstille IMCA-tellerne for turen (krantid og AHC-tid) til 00:00?\n\nTips: last ned backup først.')) return;
+  if (!confirm('Nullstille IMCA-tellerne for ' + CRANES[root.active].short + '-kranen (krantid og AHC-tid) til 00:00?\n\nTips: last ned backup først.')) return;
   if (!confirm('Er du helt sikker? Dette kan ikke angres.')) return;
   state.imca = { craneMs: 0, ahcMs: 0 }; state.tripStart = Date.now(); state.undo = null;
   if (state.history.length && confirm('Slette historikken også (' + state.history.length + ' løft)?')) state.history = [];
@@ -481,7 +536,22 @@ function resetTrip() {
 function fillInputs() { document.getElementById('opName').value = L().name || ''; document.getElementById('liftComment').value = L().comment || ''; }
 
 function render() {
-  const now = Date.now(), l = L();
+  const now = Date.now(), l = L(), cr = CRANES[root.active];
+  set('craneTitle', cr.title); set('imcaTitle', 'IMCA Kranloggbok ' + cr.short + ' – hele turen');
+  document.title = cr.short + ' – Subsea Kranlogg';
+  const running = k => !!root.cranes[k].lift.craneOpen, dot = '<span class="dot" title="Kran går"></span>';
+  for (const c of ['350', '50']) {
+    const btn = document.getElementById('tab' + c);
+    btn.className = c === cr.crane ? 'on' : '';
+    btn.innerHTML = (c === '350' ? '350t AHC-kran' : '50t-kran') + (running(c + '-MW') || running(c + '-AW') ? dot : '');
+  }
+  for (const wn of ['MW', 'AW']) {
+    const btn = document.getElementById('tab' + wn);
+    btn.className = wn === cr.winch ? 'on' : '';
+    btn.innerHTML = (wn === 'MW' ? 'Main winch (MW)' : 'Aux winch (AW)') + (running(cr.crane + '-' + wn) ? dot : '');
+  }
+  const sel = document.getElementById('swapTarget');
+  sel.innerHTML = Object.keys(CRANES).filter(k => k !== root.active).map(k => '<option value="' + k + '">' + CRANES[k].short + '</option>').join('');
   copyBank = [];
   const ic = state.imca.craneMs + (l.craneOpen ? now - l.craneOpen : 0);
   const ia = state.imca.ahcMs + (l.ahcOpen ? now - l.ahcOpen : 0);
@@ -955,13 +1025,14 @@ async function copyText(txt) {
   }
 }
 async function shareText(txt) {
-  if (navigator.share) { try { await navigator.share({ title: 'Subsea Lift – NOV 350t AHC', text: txt }); } catch (e) {} }
+  if (navigator.share) { try { await navigator.share({ title: 'Subsea Lift – ' + CRANES[root.active].short, text: txt }); } catch (e) {} }
   else copyText(txt);
 }
 function exportJson() {
   const d = new Date(), stamp = d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate()) + '_' + pad(d.getHours()) + pad(d.getMinutes());
-  const blob = new Blob([JSON.stringify(snapshot(), null, 2)], { type: 'application/json' });
-  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'nov350t_backup_' + stamp + '.json';
+  save();
+  const blob = new Blob([JSON.stringify(root, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'kranlogg_backup_' + stamp + '.json';
   document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
 }
 function importJson(ev) {
@@ -971,9 +1042,14 @@ function importJson(ev) {
   r.onload = () => {
     try {
       const s = JSON.parse(r.result);
-      if (!s || !s.imca || !s.lift || !Array.isArray(s.history)) throw new Error();
-      if (!confirm('Gjenopprette backup? (' + s.history.length + ' løft, IMCA ' + hhmm(s.imca.craneMs) + ')\nNåværende data erstattes.')) return;
-      state = s; save(); fillInputs(); render(); toast('Backup gjenopprettet');
+      if (s && s.v === 2 && s.cranes) { // backup av begge kranene
+        if (!confirm('Gjenopprette backup for begge kranene?\nNåværende data på denne telefonen erstattes.')) return;
+        localStorage.setItem(KEY, JSON.stringify(s)); root = loadRoot(); state = root.cranes[root.active];
+      } else if (isCraneState(s)) { // gammel backup (én kran) -> legges inn på valgt kran
+        if (!confirm('Gjenopprette backup til ' + CRANES[root.active].short + '-kranen? (' + s.history.length + ' løft, IMCA ' + hhmm(s.imca.craneMs) + ')\nDataene for denne kranen erstattes.')) return;
+        state = s;
+      } else throw new Error();
+      save(); fillInputs(); render(); toast('Backup gjenopprettet');
     } catch (e) { toast('Ugyldig backupfil', true); }
   };
   r.readAsText(file);
@@ -1005,7 +1081,7 @@ async function updateWakeLock() {
 window.addEventListener('online', updateNet);
 window.addEventListener('offline', updateNet);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) render(); });
-window.addEventListener('storage', e => { if (e.key === KEY) { state = loadState(); fillInputs(); render(); } });
+window.addEventListener('storage', e => { if (e.key === KEY) { root = loadRoot(); state = root.cranes[root.active]; fillInputs(); render(); } });
 
 save(); fillInputs(); updateNet(); render();
 if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
