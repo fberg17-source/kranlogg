@@ -1,0 +1,901 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#0b1120" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="350t AHC Logg" />
+  <meta name="application-name" content="350t AHC Logg" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <title>NOV 350t AHC – Subsea Kranlogg</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%230f172a'/%3E%3Cpath d='M20 82h60v8H20zM32 82V26l48-10v10L42 35v47z' fill='%23f59e0b'/%3E%3Cpath d='M74 26v28' stroke='%2338bdf8' stroke-width='4'/%3E%3Ccircle cx='74' cy='58' r='6' fill='none' stroke='%2338bdf8' stroke-width='4'/%3E%3Ctext x='50' y='74' font-family='sans-serif' font-weight='bold' font-size='14' fill='%23ffffff' text-anchor='middle'%3E350t AHC%3C/text%3E%3C/svg%3E" />
+  <link rel="apple-touch-icon" href="icon-192.png" />
+  <!-- Tesseract.js (OCR) lastes først når kameraknappen brukes, så resten av appen virker uten nett -->
+  <style>
+    :root {
+      --bg: #0b1120; --card: #151f32; --card-border: #26354f; --inset: #0b1120;
+      --text: #f1f5f9; --muted: #94a3b8;
+      --amber: #f59e0b; --green: #10b981; --red: #ef4444; --blue: #38bdf8;
+    }
+    * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    html { -webkit-text-size-adjust: 100%; }
+    body { margin: 0; padding: 12px; padding-top: calc(12px + env(safe-area-inset-top)); padding-bottom: 60px;
+      background: var(--bg); color: var(--text); -webkit-tap-highlight-color: transparent; }
+    header { display: flex; align-items: center; justify-content: space-between; gap: 12px;
+      padding: 10px 14px; background: var(--card); border: 1px solid var(--card-border); border-radius: 14px; margin-bottom: 14px; }
+    .header-left { display: flex; align-items: center; gap: 12px; }
+    header h1 { font-size: 1.2rem; margin: 0; color: #fff; }
+    header .sub { font-size: 0.8rem; color: var(--amber); font-weight: 700; letter-spacing: 0.5px; }
+    .net { font-size: 0.7rem; padding: 4px 8px; border-radius: 8px; font-weight: 700; white-space: nowrap; }
+    .net-on { background: #075985; color: #7dd3fc; border: 1px solid #38bdf8; }
+    .net-off { background: #3f2a06; color: #fcd34d; border: 1px solid #f59e0b; }
+
+    .card { background: var(--card); border: 1px solid var(--card-border); border-radius: 14px; padding: 14px; margin-bottom: 14px; }
+    .card-title { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.8px; color: var(--muted);
+      margin: 0 0 10px 0; font-weight: 700; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+    .imca { border-color: #b45309; }
+    .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+    .stat-box { background: var(--inset); border: 1px solid var(--card-border); border-radius: 10px; padding: 12px; text-align: center; }
+    .stat-label { font-size: 0.75rem; color: var(--muted); display: block; margin-bottom: 4px; }
+    .stat-val { font-size: 2.1rem; font-weight: 800; color: var(--amber); font-variant-numeric: tabular-nums; line-height: 1.1; }
+    .stat-val.blue { color: var(--blue); }
+    .stat-dec { font-size: 0.8rem; color: var(--muted); margin-top: 2px; font-variant-numeric: tabular-nums; }
+    .mini { background: var(--inset); padding: 8px 4px; border-radius: 8px; text-align: center; border: 1px solid var(--card-border); }
+    .mini span { display: block; font-size: 0.66rem; color: var(--muted); letter-spacing: 0.3px; }
+    .mini strong { font-size: 1.05rem; color: #fff; font-variant-numeric: tabular-nums; }
+    .hint { font-size: 0.78rem; color: var(--muted); text-align: center; margin: 8px 0; }
+
+    button { width: 100%; border: none; border-radius: 12px; padding: 18px 12px; font-size: 1.1rem; font-weight: 800;
+      cursor: pointer; color: #fff; transition: transform 0.08s ease, opacity 0.15s; }
+    button:active { transform: scale(0.98); }
+    button:disabled { opacity: 0.3; }
+    .btn-green { background: var(--green); color: #052e16; }
+    .btn-red { background: var(--red); }
+    .btn-amber { background: var(--amber); color: #1e1b08; }
+    .btn-blue { background: #0284c7; }
+    .btn-ahc-stop { background: #1e293b; border: 2px solid #38bdf8; color: #7dd3fc; }
+    .btn-outline { background: transparent; border: 1px solid var(--card-border); color: var(--muted); padding: 11px; font-size: 0.9rem; font-weight: 700; }
+    .btn-save { background: #7c3aed; font-size: 1.05rem; }
+    .btn-small { width: auto; padding: 6px 10px; font-size: 0.78rem; font-weight: 700; border-radius: 8px; }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+
+    .pill { padding: 5px 10px; border-radius: 999px; font-size: 0.75rem; font-weight: 800; white-space: nowrap; }
+    .pill-off { background: #334155; color: #cbd5e1; }
+    .pill-on { background: #065f46; color: #6ee7b7; border: 1px solid #10b981; }
+    .pill-ahc { background: #075985; color: #7dd3fc; border: 1px solid #38bdf8; }
+
+    label { font-size: 0.78rem; color: var(--muted); display: block; margin-bottom: 4px; }
+    input[type="text"], input[type="time"] { width: 100%; background: var(--inset); border: 1px solid var(--card-border);
+      color: #fff; padding: 13px; border-radius: 8px; font-size: 1.1rem; font-weight: 600; }
+    input:focus { outline: none; border-color: var(--amber); }
+    input[type="time"]::-webkit-calendar-picker-indicator { filter: invert(1); }
+    .section-label { font-size: 0.78rem; color: var(--amber); font-weight: 800; text-transform: uppercase; letter-spacing: 0.6px; margin: 16px 0 8px; }
+
+    .ocr-box { display: none; background: var(--inset); padding: 10px; border-radius: 8px; border: 1px solid #1e3a5f;
+      font-size: 0.88rem; color: #cbd5e1; margin-bottom: 10px; }
+    .ocr-box .ok { color: #6ee7b7; } .ocr-box .warn { color: #fcd34d; } .ocr-box .err { color: #fca5a5; }
+    .ocr-box img { max-width: 100%; max-height: 160px; border-radius: 6px; display: block; margin-bottom: 8px; }
+    .ocr-raw { font-family: ui-monospace, monospace; font-size: 0.72rem; color: var(--muted); white-space: pre-wrap; margin-top: 6px; }
+    details summary { cursor: pointer; color: var(--muted); font-size: 0.8rem; font-weight: 700; }
+
+    .readings { margin-top: 8px; }
+    .reading { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 7px 10px;
+      background: var(--inset); border: 1px solid var(--card-border); border-radius: 8px; margin-bottom: 6px; font-size: 0.85rem; font-variant-numeric: tabular-nums; }
+    .reading .x { background: none; border: none; color: var(--muted); width: auto; padding: 2px 8px; font-size: 1rem; }
+    .tag { font-size: 0.66rem; padding: 2px 6px; border-radius: 6px; font-weight: 800; }
+    .tag-ahc { background: #075985; color: #7dd3fc; }
+    .tag-ocr { background: #3f2a06; color: #fcd34d; }
+    .tag-man { background: #334155; color: #cbd5e1; }
+
+    .report { background: var(--inset); border: 1px solid var(--card-border); border-radius: 10px; overflow: hidden; margin-bottom: 10px; }
+    .rep-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 9px 10px; border-bottom: 1px solid #1c2940; }
+    .rep-row:last-child { border-bottom: none; }
+    .rep-row .k { font-size: 0.78rem; color: var(--muted); flex: 1; }
+    .rep-row .v { font-size: 0.98rem; font-weight: 800; color: #fff; font-variant-numeric: tabular-nums; text-align: right; }
+    .rep-row .c { width: auto; padding: 6px 9px; font-size: 0.75rem; border-radius: 7px; background: #1e293b; color: #cbd5e1; border: 1px solid var(--card-border); font-weight: 700; }
+
+    .hist { background: var(--inset); border: 1px solid var(--card-border); border-radius: 10px; padding: 12px; margin-bottom: 12px; }
+    .hist h4 { margin: 0 0 4px; color: var(--amber); font-size: 1rem; display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+    .hist .meta { font-size: 0.85rem; color: #cbd5e1; margin: 2px 0 10px; }
+    .hist .report { margin-bottom: 8px; }
+    .empty { color: var(--muted); font-size: 0.85rem; text-align: center; padding: 10px; }
+    .file-btn { display: block; width: 100%; text-align: center; border-radius: 12px; padding: 18px 12px; font-size: 1.1rem;
+      font-weight: 800; cursor: pointer; margin-bottom: 10px; position: relative; overflow: hidden; user-select: none; }
+    .file-btn.btn-amber { color: #1e1b08; }
+    .file-btn:active { transform: scale(0.98); }
+    .btn-outline-big { background: transparent; border: 2px solid var(--amber); color: #fcd34d; font-size: 1rem; padding: 14px 12px; }
+    .vh { position: absolute; width: 1px; height: 1px; opacity: 0; overflow: hidden; left: 0; top: 0; }
+    .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); max-width: 90%; text-align: center;
+      padding: 11px 16px; border-radius: 10px; font-weight: 700; font-size: 0.92rem; opacity: 0; transition: opacity 0.2s; pointer-events: none; z-index: 10; }
+    .toast.show { opacity: 1; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <svg width="48" height="48" viewBox="0 0 100 100" aria-hidden="true">
+      <rect width="100" height="100" rx="20" fill="#0b1120" stroke="#f59e0b" stroke-width="4"/>
+      <path d="M20 82h60v8H20zM32 82V26l48-10v10L42 35v47z" fill="#f59e0b"/>
+      <path d="M74 26v28" stroke="#38bdf8" stroke-width="5"/>
+      <circle cx="74" cy="58" r="6" fill="none" stroke="#38bdf8" stroke-width="4"/>
+      <text x="50" y="75" font-family="sans-serif" font-weight="bold" font-size="14" fill="#ffffff" text-anchor="middle">350t AHC</text>
+    </svg>
+    <div>
+      <div class="sub">NOV 350t AHC CRANE</div>
+      <h1>Subsea Kranlogg</h1>
+    </div>
+  </div>
+  <div id="netBadge" class="net net-on">ONLINE</div>
+</header>
+
+<!-- 1. IMCA KRANLOGGBOK -->
+<section class="card imca">
+  <div class="card-title">
+    <span>IMCA Kranloggbok – hele turen</span>
+    <span style="color:var(--amber)">KUN MANUELL NULLSTILLING</span>
+  </div>
+  <div class="grid2">
+    <div class="stat-box">
+      <span class="stat-label">SAMLET KRANTID (TT:MM)</span>
+      <div class="stat-val" id="imcaCrane">00:00</div>
+      <div class="stat-dec" id="imcaCraneDec">0.00 hours</div>
+    </div>
+    <div class="stat-box">
+      <span class="stat-label">SAMLET AHC-TID (TT:MM)</span>
+      <div class="stat-val blue" id="imcaAhc">00:00</div>
+      <div class="stat-dec" id="imcaAhcDec">0.00 hours</div>
+    </div>
+  </div>
+  <div class="hint" id="tripInfo"></div>
+  <button class="btn-outline" onclick="resetTrip()">Nullstill tur (kun etter endt tur)</button>
+</section>
+
+<!-- 2. AKTIVT LØFT -->
+<section class="card">
+  <div class="card-title">
+    <span>Aktivt løft</span>
+    <div>
+      <span id="craneBadge" class="pill pill-off">KRAN AV</span>
+      <span id="ahcBadge" class="pill pill-off">AHC AV</span>
+    </div>
+  </div>
+
+  <div style="margin-bottom:10px;">
+    <label for="opName">Operasjon (f.eks. ROV basket IT, Subsea module)</label>
+    <input type="text" id="opName" placeholder="Skriv inn operasjon..." oninput="setName()" />
+  </div>
+
+  <div class="grid3" style="margin-bottom:8px;">
+    <div class="mini"><span>STARTTID</span><strong id="liveStart">--:--</strong></div>
+    <div class="mini"><span>KRANTID</span><strong id="liveCrane">00:00:00</strong></div>
+    <div class="mini"><span>AHC-TID</span><strong id="liveAhc" style="color:var(--blue)">00:00:00</strong></div>
+  </div>
+  <div class="grid3" style="margin-bottom:12px;">
+    <div class="mini"><span>MAX HOOK LOAD</span><strong id="liveHook">–</strong></div>
+    <div class="mini"><span>MAX DYBDE</span><strong id="liveDepth">–</strong></div>
+    <div class="mini"><span>HC/CT DYBDE</span><strong id="liveHc" style="color:var(--blue)">–</strong></div>
+  </div>
+
+  <div class="row">
+    <button class="btn-green" id="btnCraneStart" onclick="craneStart()">▶ Kran START</button>
+    <button class="btn-red" id="btnCraneStop" onclick="craneStop()">■ Kran STOPP</button>
+  </div>
+  <div class="row">
+    <button class="btn-blue" id="btnAhcStart" onclick="ahcStart()">⚡ AHC START</button>
+    <button class="btn-ahc-stop" id="btnAhcStop" onclick="ahcStop()">AHC STOPP</button>
+  </div>
+  <div style="margin-bottom:12px;">
+    <label for="manTime">Klokkeslett for neste START/STOPP (tomt = nå)</label>
+    <input type="time" id="manTime" step="60" />
+  </div>
+
+  <!-- KAMERA OCR -->
+  <!-- Native filvelgere via <label>: virker også der nettleseren blokkerer .click() fra skript -->
+  <label class="file-btn btn-amber" for="cameraInput">📷 Ta bilde av NOV-skjerm
+    <input type="file" id="cameraInput" class="vh" accept="image/*" capture="environment" onchange="handleImage(event)" />
+  </label>
+  <label class="file-btn btn-outline-big" for="galleryInput">🖼 Velg bilde fra galleriet
+    <input type="file" id="galleryInput" class="vh" accept="image/*" onchange="handleImage(event)" />
+  </label>
+  <div class="hint" style="margin-top:-2px">Åpner ikke kameraet? Ta bildet med telefonens vanlige kamera, og velg det fra galleriet.</div>
+  <div id="ocrBox" class="ocr-box"></div>
+  <button class="btn-outline" id="btnUndo" style="margin-bottom:10px; display:none;" onclick="undo()">↶ Angre siste avlesning</button>
+
+  <!-- MANUELL INNTASTING -->
+  <div class="section-label">Manuell avlesning</div>
+  <div class="row" style="margin-bottom:8px;">
+    <div>
+      <label for="manHook">Hook Load (t)</label>
+      <input type="text" inputmode="decimal" id="manHook" placeholder="f.eks. 1,7" />
+    </div>
+    <div>
+      <label for="manDepth">Wire Paid Out (m)</label>
+      <input type="text" inputmode="decimal" id="manDepth" placeholder="f.eks. 1795" />
+    </div>
+  </div>
+  <button class="btn-outline" style="color:#fff; border-color:#475569;" onclick="addManualReading()">＋ Registrer avlesning</button>
+  <div class="hint">Avlesninger tatt mens AHC er PÅ teller i «Wire paid out during HC/CT».</div>
+  <div id="readings" class="readings"></div>
+
+  <!-- RAPPORT -->
+  <div class="section-label">Rapport – New Operation Log Entry</div>
+  <div id="liveReport"></div>
+  <div class="row">
+    <button class="btn-amber" style="font-size:0.95rem; padding:14px;" onclick="copyText(reportText(currentSummary()))">📋 Kopier alt</button>
+    <button class="btn-blue" style="font-size:0.95rem; padding:14px;" onclick="shareText(reportText(currentSummary()))">↗ Del</button>
+  </div>
+  <button class="btn-save" onclick="saveLift()">💾 Lagre løft i historikk &amp; start nytt</button>
+</section>
+
+<!-- 3. HISTORIKK -->
+<section class="card">
+  <div class="card-title"><span>Historikk – ferdige løft</span><span id="histCount" class="pill pill-off">0</span></div>
+  <div id="history"></div>
+</section>
+
+<!-- 4. BACKUP -->
+<section class="card">
+  <details>
+    <summary>BACKUP OG GJENOPPRETTING</summary>
+    <div class="row" style="margin-top:10px;">
+      <button class="btn-outline" onclick="exportJson()">Last ned backup</button>
+      <button class="btn-outline" onclick="document.getElementById('importInput').click()">Gjenopprett</button>
+    </div>
+    <input type="file" id="importInput" accept="application/json,.json" style="display:none" onchange="importJson(event)" />
+    <div class="hint">Alt lagres kun i nettleseren på denne telefonen. Ta backup før nullstilling, telefonbytte eller tømming av nettleserdata.</div>
+  </details>
+</section>
+
+<div id="toast" class="toast"></div>
+
+<script>
+'use strict';
+const KEY = 'nov350t_subsea_logg_v1';
+const MIN = 60000, HOUR = 3600000;
+
+/* ================= DATA ================= */
+function blankLift() {
+  return { name: '', start: null, craneAccum: 0, craneOpen: null, ahcAccum: 0, ahcOpen: null, readings: [] };
+}
+function seedState() {
+  // Forhåndsutfylt med vaktens tall
+  const s1 = new Date(2026, 10, 14, 14, 45).getTime();
+  const e1 = new Date(2026, 10, 14, 22, 57).getTime();
+  return {
+    v: 1,
+    tripStart: new Date(2026, 10, 14, 0, 0).getTime(),
+    imca: { craneMs: 522 * MIN, ahcMs: 52 * MIN },
+    lift: blankLift(),
+    history: [
+      { id: 2, name: 'Handover-økt (Løft nr. 2)', start: null, end: null, craneMs: 30 * MIN, ahcMs: 0,
+        maxHook: 0.9, maxDepth: 1176.2, hcMin: null, hcMax: null },
+      { id: 1, name: 'ROV basket IT', start: s1, end: e1, craneMs: 492 * MIN, ahcMs: 52 * MIN,
+        maxHook: 1.7, maxDepth: 1795, hcMin: 1740, hcMax: 1795 }
+    ],
+    undo: null
+  };
+}
+
+let state = loadState();
+function loadState() {
+  try {
+    const raw = localStorage.getItem(KEY);
+    if (raw) { const s = JSON.parse(raw); if (s && s.imca && s.lift && Array.isArray(s.history)) return s; }
+  } catch (e) {}
+  return seedState();
+}
+function save() {
+  try { localStorage.setItem(KEY, JSON.stringify(state)); }
+  catch (e) { toast('Kunne ikke lagre – ta backup!', true); }
+}
+function snapshot() { const c = JSON.parse(JSON.stringify(state)); c.undo = null; return c; }
+
+/* ================= FORMAT ================= */
+const pad = n => String(n).padStart(2, '0');
+const hhmm = ms => { const m = Math.floor(Math.max(0, ms) / MIN); return pad(Math.floor(m / 60)) + ':' + pad(m % 60); };
+const hhmmss = ms => { const s = Math.floor(Math.max(0, ms) / 1000); return pad(Math.floor(s / 3600)) + ':' + pad(Math.floor(s / 60) % 60) + ':' + pad(s % 60); };
+const hm = ms => { const m = Math.round(Math.max(0, ms) / MIN); return Math.floor(m / 60) + 't ' + (m % 60) + 'm'; };
+const decH = ms => (Math.round(Math.max(0, ms) / MIN) / 60).toFixed(2);
+const clock = t => { const d = new Date(t); return pad(d.getHours()) + ':' + pad(d.getMinutes()); };
+const clockS = t => { const d = new Date(t); return clock(t) + ':' + pad(d.getSeconds()); };
+const date = t => { const d = new Date(t); return pad(d.getDate()) + '.' + pad(d.getMonth() + 1) + '.' + d.getFullYear(); };
+const fmtNum = v => { if (v == null || isNaN(v)) return ''; return String(Math.round(v * 100) / 100); };
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+function parseNum(s) {
+  if (s == null) return NaN;
+  s = String(s).trim().replace(/\s/g, '').replace(',', '.');
+  if (!/^-?\d+(\.\d+)?$/.test(s)) return NaN;
+  return parseFloat(s);
+}
+// HH:MM(:SS) -> tidsstempel i dag (eller i går hvis det ville vært i fremtiden)
+function timeToTs(str) {
+  const m = String(str || '').match(/^(\d{1,2})[:.](\d{2})(?:[:.](\d{2}))?$/);
+  if (!m) return null;
+  const h = +m[1], mi = +m[2], se = m[3] ? +m[3] : 0;
+  if (h > 23 || mi > 59 || se > 59) return null;
+  const d = new Date(); d.setHours(h, mi, se, 0);
+  let t = d.getTime();
+  if (t > Date.now() + 5 * MIN) t -= 24 * HOUR;
+  return t;
+}
+function takeManTime() {
+  const el = document.getElementById('manTime');
+  const v = el.value; el.value = '';
+  if (!v) return Date.now();
+  return timeToTs(v) ?? Date.now();
+}
+
+/* ================= TIDTAKING ================= */
+const L = () => state.lift;
+function liftCraneMs(now) { const l = L(); return l.craneAccum + (l.craneOpen ? Math.max(0, now - l.craneOpen) : 0); }
+function liftAhcMs(now) { const l = L(); return l.ahcAccum + (l.ahcOpen ? Math.max(0, now - l.ahcOpen) : 0); }
+
+function doCraneStart(t) {
+  const l = L();
+  if (l.craneOpen) return false;
+  l.craneOpen = t;
+  if (!l.start || t < l.start) l.start = t;
+  return true;
+}
+function doAhcStop(t) {
+  const l = L();
+  if (!l.ahcOpen) return false;
+  if (t < l.ahcOpen) throw new Error('AHC STOPP kan ikke være før AHC START (' + clock(l.ahcOpen) + ')');
+  const d = t - l.ahcOpen;
+  l.ahcAccum += d; state.imca.ahcMs += d; l.ahcOpen = null;
+  return true;
+}
+function doCraneStop(t) {
+  const l = L();
+  if (!l.craneOpen) return false;
+  if (t < l.craneOpen) throw new Error('Kran STOPP kan ikke være før Kran START (' + clock(l.craneOpen) + ')');
+  if (l.ahcOpen) doAhcStop(t);
+  const d = t - l.craneOpen;
+  l.craneAccum += d; state.imca.craneMs += d; l.craneOpen = null; l.end = t;
+  return true;
+}
+function doAhcStart(t) {
+  const l = L();
+  if (l.ahcOpen) return { started: false };
+  let autoCrane = false;
+  if (!l.craneOpen) { doCraneStart(t); autoCrane = true; }
+  if (t < l.craneOpen) t = l.craneOpen;
+  l.ahcOpen = t;
+  return { started: true, autoCrane };
+}
+
+function act(fn) {
+  try { fn(); save(); render(); vibrate(); }
+  catch (e) { toast(e.message, true); }
+}
+function craneStart() { act(() => { if (doCraneStart(takeManTime())) toast('Kran startet'); }); }
+function craneStop() { act(() => { if (doCraneStop(takeManTime())) toast('Kran stoppet – tiden er lagt til IMCA'); }); }
+function ahcStart() { act(() => { const r = doAhcStart(takeManTime()); if (r.started) toast(r.autoCrane ? 'AHC startet (kran startet også)' : 'AHC startet'); }); }
+function ahcStop() { act(() => { if (doAhcStop(takeManTime())) toast('AHC stoppet'); }); }
+
+function setName() { L().name = document.getElementById('opName').value; save(); renderReportOnly(); }
+
+/* ================= AVLESNINGER ================= */
+function addReading(r) { L().readings.push(r); }
+function addManualReading() {
+  const hEl = document.getElementById('manHook'), dEl = document.getElementById('manDepth');
+  const hook = hEl.value.trim() ? parseNum(hEl.value) : null;
+  const depth = dEl.value.trim() ? parseNum(dEl.value) : null;
+  if (hook === null && depth === null) { toast('Skriv inn Hook Load og/eller dybde', true); return; }
+  if ((hook !== null && isNaN(hook)) || (depth !== null && isNaN(depth))) { toast('Ugyldig tall – bruk f.eks. 1,7 eller 1.7', true); return; }
+  state.undo = snapshot();
+  addReading({ t: Date.now(), hook, depth, ahc: !!L().ahcOpen, src: 'man' });
+  hEl.value = ''; dEl.value = '';
+  save(); render(); toast('Avlesning registrert');
+}
+function delReading(i) {
+  const l = L(); if (!l.readings[i]) return;
+  if (!confirm('Slette denne avlesningen?')) return;
+  l.readings.splice(i, 1); save(); render();
+}
+function undo() {
+  if (!state.undo) return;
+  if (!confirm('Angre siste avlesning/kamerabilde?')) return;
+  state = state.undo; state.undo = null; save(); fillInputs(); render(); toast('Angret');
+}
+
+/* ================= SAMMENDRAG / RAPPORT ================= */
+function summarize(readings) {
+  let maxHook = null, maxDepth = null, hcMin = null, hcMax = null;
+  for (const r of readings) {
+    if (r.hook != null && !isNaN(r.hook)) maxHook = maxHook == null ? r.hook : Math.max(maxHook, r.hook);
+    if (r.depth != null && !isNaN(r.depth)) {
+      maxDepth = maxDepth == null ? r.depth : Math.max(maxDepth, r.depth);
+      if (r.ahc) { hcMin = hcMin == null ? r.depth : Math.min(hcMin, r.depth); hcMax = hcMax == null ? r.depth : Math.max(hcMax, r.depth); }
+    }
+  }
+  return { maxHook, maxDepth, hcMin, hcMax };
+}
+function currentSummary() {
+  const now = Date.now(), l = L();
+  return Object.assign({ name: l.name, start: l.start, end: l.craneOpen ? null : l.end || null,
+    craneMs: liftCraneMs(now), ahcMs: liftAhcMs(now) }, summarize(l.readings));
+}
+function reportFields(s) {
+  const hc = s.hcMin != null ? fmtNum(s.hcMin) + ' – ' + fmtNum(s.hcMax) : null;
+  return [
+    ['Operation type', 'Subsea Lift', 'Subsea Lift'],
+    ['Total use time', decH(s.craneMs) + ' hours', decH(s.craneMs)],
+    ['Max tension in hook during operation', s.maxHook != null ? fmtNum(s.maxHook) + ' t' : '–', s.maxHook != null ? fmtNum(s.maxHook) : ''],
+    ['Max wire paid out during operation', s.maxDepth != null ? fmtNum(s.maxDepth) + ' m' : '–', s.maxDepth != null ? fmtNum(s.maxDepth) : ''],
+    ['Wire paid out during HC/CT', hc ? hc + ' m' : (s.ahcMs > 0 ? '–' : 'N/A'), hc || ''],
+    ['Use time in HC/CT', decH(s.ahcMs) + ' hours', decH(s.ahcMs)]
+  ];
+}
+function reportText(s) {
+  const head = [];
+  if (s.name) head.push('Operasjon: ' + s.name + (s.start ? ' (' + date(s.start) + ')' : ''));
+  if (s.start) head.push('Krantid: ' + clock(s.start) + ' – ' + (s.end ? clock(s.end) : 'pågår') + ' (' + hm(s.craneMs) + ')');
+  return (head.length ? head.join('\n') + '\n\n' : '') + reportFields(s).map(f => f[0] + ': ' + f[1]).join('\n');
+}
+// Kopiverdier lagres her så knappene kan referere til dem uten å bygge strenger i HTML
+let copyBank = [];
+function reportHtml(s) {
+  return '<div class="report">' + reportFields(s).map(f => {
+    const idx = copyBank.push(f[2]) - 1;
+    return '<div class="rep-row"><div class="k">' + esc(f[0]) + '</div><div class="v">' + esc(f[1]) + '</div>' +
+      (f[2] ? '<button class="c" onclick="copyText(copyBank[' + idx + '])">Kopier</button>' : '<span style="width:58px"></span>') + '</div>';
+  }).join('') + '</div>';
+}
+
+/* ================= LAGRE LØFT ================= */
+function saveLift() {
+  const l = L(), now = Date.now();
+  if (!l.craneOpen && l.craneAccum === 0 && !l.readings.length) { toast('Ingen data i aktivt løft', true); return; }
+  if (l.craneOpen) {
+    if (!confirm('Kranen går fortsatt. Stoppe kranen nå (' + clock(now) + ') og lagre løftet?')) return;
+    try { doCraneStop(now); } catch (e) { toast(e.message, true); return; }
+  } else if (!confirm('Lagre løftet i historikken og starte nytt?\nIMCA-timene beholdes.')) return;
+  const s = currentSummary();
+  state.history.unshift({
+    id: now, name: (l.name || '').trim() || 'Subsea Lift', start: l.start, end: l.end || null,
+    craneMs: s.craneMs, ahcMs: s.ahcMs, maxHook: s.maxHook, maxDepth: s.maxDepth, hcMin: s.hcMin, hcMax: s.hcMax,
+    readings: l.readings
+  });
+  state.lift = blankLift(); state.undo = null;
+  save(); fillInputs(); render(); toast('Løft lagret – klar for nytt løft');
+}
+function delHistory(id) {
+  const h = state.history.find(x => x.id === id); if (!h) return;
+  if (!confirm('Slette «' + h.name + '» fra historikken?\n(IMCA-timene påvirkes ikke.)')) return;
+  state.history = state.history.filter(x => x.id !== id); save(); render();
+}
+function copyHistory(id) { const h = state.history.find(x => x.id === id); if (h) copyText(reportText(h)); }
+
+function resetTrip() {
+  if (L().craneOpen || L().ahcOpen) { toast('Stopp kran/AHC først', true); return; }
+  if (!confirm('Nullstille IMCA-tellerne for turen (krantid og AHC-tid) til 00:00?\n\nTips: last ned backup først.')) return;
+  if (!confirm('Er du helt sikker? Dette kan ikke angres.')) return;
+  state.imca = { craneMs: 0, ahcMs: 0 }; state.tripStart = Date.now(); state.undo = null;
+  if (state.history.length && confirm('Slette historikken også (' + state.history.length + ' løft)?')) state.history = [];
+  save(); render(); toast('Turen er nullstilt');
+}
+
+/* ================= VISNING ================= */
+function fillInputs() { document.getElementById('opName').value = L().name || ''; }
+
+function render() {
+  const now = Date.now(), l = L();
+  copyBank = [];
+  const ic = state.imca.craneMs + (l.craneOpen ? now - l.craneOpen : 0);
+  const ia = state.imca.ahcMs + (l.ahcOpen ? now - l.ahcOpen : 0);
+  set('imcaCrane', hhmm(ic)); set('imcaCraneDec', decH(ic) + ' hours');
+  set('imcaAhc', hhmm(ia)); set('imcaAhcDec', decH(ia) + ' hours');
+  set('tripInfo', 'Tur startet ' + date(state.tripStart) + ' · ' + state.history.length + ' løft i historikk');
+
+  set('liveStart', l.start ? clock(l.start) : '--:--');
+  set('liveCrane', hhmmss(liftCraneMs(now)));
+  set('liveAhc', hhmmss(liftAhcMs(now)));
+  const s = summarize(l.readings);
+  set('liveHook', s.maxHook != null ? fmtNum(s.maxHook) + ' t' : '–');
+  set('liveDepth', s.maxDepth != null ? fmtNum(s.maxDepth) + ' m' : '–');
+  set('liveHc', s.hcMin != null ? fmtNum(s.hcMin) + '–' + fmtNum(s.hcMax) : '–');
+
+  const cb = document.getElementById('craneBadge'), ab = document.getElementById('ahcBadge');
+  cb.textContent = l.craneOpen ? 'KRAN PÅ' : 'KRAN AV'; cb.className = 'pill ' + (l.craneOpen ? 'pill-on' : 'pill-off');
+  ab.textContent = l.ahcOpen ? 'AHC PÅ' : 'AHC AV'; ab.className = 'pill ' + (l.ahcOpen ? 'pill-ahc' : 'pill-off');
+  document.getElementById('btnCraneStart').disabled = !!l.craneOpen;
+  document.getElementById('btnCraneStop').disabled = !l.craneOpen;
+  document.getElementById('btnAhcStart').disabled = !!l.ahcOpen;
+  document.getElementById('btnAhcStop').disabled = !l.ahcOpen;
+  document.getElementById('btnUndo').style.display = state.undo ? 'block' : 'none';
+
+  // avlesninger
+  const rd = document.getElementById('readings');
+  rd.innerHTML = l.readings.map((r, i) => ({ r, i })).reverse().map(({ r, i }) =>
+    '<div class="reading"><span>' + clock(r.t) + ' &nbsp;' +
+    (r.hook != null ? '<b>' + fmtNum(r.hook) + ' t</b> ' : '') +
+    (r.depth != null ? '<b>' + fmtNum(r.depth) + ' m</b> ' : '') +
+    (r.ahc ? '<span class="tag tag-ahc">AHC</span> ' : '') +
+    '<span class="tag ' + (r.src === 'ocr' ? 'tag-ocr">FOTO' : 'tag-man">MAN') + '</span></span>' +
+    '<button class="x" onclick="delReading(' + i + ')">✕</button></div>').join('');
+
+  renderReportOnly(true);
+  renderHistory();
+  updateWakeLock();
+}
+function renderReportOnly(skipReset) {
+  if (!skipReset) copyBank = copyBank.slice(0, 0);
+  document.getElementById('liveReport').innerHTML = reportHtml(currentSummary());
+  if (!skipReset) renderHistory(true);
+}
+function renderHistory(skipBankReset) {
+  const el = document.getElementById('history');
+  set('histCount', String(state.history.length));
+  if (!state.history.length) { el.innerHTML = '<div class="empty">Ingen lagrede løft.</div>'; return; }
+  el.innerHTML = state.history.map((h, n) => {
+    const nr = state.history.length - n;
+    const when = h.start ? date(h.start) + ' · ' + clock(h.start) + ' – ' + (h.end ? clock(h.end) : '?') : 'Tidspunkt ikke registrert';
+    return '<div class="hist"><h4><span>' + nr + '. ' + esc(h.name) + '</span>' +
+      '<button class="btn-outline btn-small" onclick="delHistory(' + h.id + ')">Slett</button></h4>' +
+      '<div class="meta">' + esc(when) + '<br>Krantid ' + hm(h.craneMs) + ' (' + decH(h.craneMs) + ' h) · AHC ' + Math.round(h.ahcMs / MIN) + ' min (' + decH(h.ahcMs) + ' h)</div>' +
+      reportHtml(h) +
+      '<button class="btn-outline" onclick="copyHistory(' + h.id + ')">📋 Kopier rapport</button></div>';
+  }).join('');
+}
+function set(id, txt) { const e = document.getElementById(id); if (e.textContent !== txt) e.textContent = txt; }
+
+function tick() {
+  const l = L(); if (!l.craneOpen && !l.ahcOpen) return;
+  const now = Date.now();
+  set('liveCrane', hhmmss(liftCraneMs(now)));
+  set('liveAhc', hhmmss(liftAhcMs(now)));
+  const ic = state.imca.craneMs + (l.craneOpen ? now - l.craneOpen : 0);
+  const ia = state.imca.ahcMs + (l.ahcOpen ? now - l.ahcOpen : 0);
+  set('imcaCrane', hhmm(ic)); set('imcaCraneDec', decH(ic) + ' hours');
+  set('imcaAhc', hhmm(ia)); set('imcaAhcDec', decH(ia) + ' hours');
+}
+
+/* ================= OCR (NOV 350t operatørskjerm, Siemens Simatic) ================= */
+// Fremgangsmåte: 1) hele bildet leses for å finne etikettene «Hook Load», «Wire Paid Out»,
+// «WINCH CRUISE CONTROL» og klokka. 2) Verdiboksen ved hver etikett klippes ut, forstørres og
+// leses på nytt for seg – det gir mye sikrere tall enn å lese hele skjermen på en gang.
+let tesseractLoading = null, worker = null, ocrProgress = null;
+function loadTesseract() {
+  if (window.Tesseract) return Promise.resolve();
+  if (!tesseractLoading) tesseractLoading = new Promise((res, rej) => {
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
+    s.onload = res;
+    s.onerror = () => { tesseractLoading = null; rej(new Error('Kunne ikke laste OCR. Trenger nett første gang – bruk manuell inntasting.')); };
+    document.head.appendChild(s);
+  });
+  return tesseractLoading;
+}
+const withTimeout = (p, ms, msg) => Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error(msg)), ms))]);
+async function getWorker() {
+  await withTimeout(loadTesseract(), 60000, 'Tidsavbrudd ved lasting av OCR (dårlig nett?)');
+  if (worker) return worker;
+  const isWeb = /^https?:$/.test(location.protocol);
+  let lastErr = null;
+  // Når appen åpnes som fil på telefonen kan nettleseren nekte lagring (IndexedDB) -> prøv uten cache
+  for (const cacheMethod of (isWeb ? ['write', 'none'] : ['none'])) {
+    try {
+      worker = await withTimeout(Tesseract.createWorker('eng', 1, {
+        cacheMethod,
+        logger: m => { if (ocrProgress) ocrProgress(m); },
+        errorHandler: e => { lastErr = e; }
+      }), 180000, 'Tidsavbrudd ved nedlasting av OCR-språkfil (dårlig nett?)');
+      return worker;
+    } catch (e) { lastErr = e; worker = null; }
+  }
+  throw new Error('OCR kunne ikke starte: ' + errText(lastErr));
+}
+function errText(e) { return e ? (e.message || (typeof e === 'string' ? e : JSON.stringify(e))) : 'ukjent feil'; }
+const OCR_STEPS = { 'loading tesseract core': 'Laster OCR-motor', 'initializing tesseract': 'Starter OCR', 'initialized tesseract': 'OCR startet',
+  'loading language traineddata': 'Laster ned språkfil', 'loaded language traineddata': 'Språkfil lastet', 'initializing api': 'Gjør klar',
+  'initialized api': 'Klar', 'recognizing text': 'Leser NOV-skjerm' };
+
+// Les bildet til gråtoner (maks 2600 px)
+function loadGray(file) {
+  return new Promise((res, rej) => {
+    const img = new Image(), url = URL.createObjectURL(file);
+    img.onload = () => {
+      const scale = Math.min(2, 2600 / Math.max(img.width, img.height));
+      const W = Math.round(img.width * scale), H = Math.round(img.height * scale);
+      const c = document.createElement('canvas'); c.width = W; c.height = H;
+      const ctx = c.getContext('2d'); ctx.imageSmoothingQuality = 'high'; ctx.drawImage(img, 0, 0, W, H);
+      const d = ctx.getImageData(0, 0, W, H), p = d.data, gray = new Uint8ClampedArray(W * H);
+      for (let i = 0, j = 0; j < gray.length; i += 4, j++) {
+        const g = 0.299 * p[i] + 0.587 * p[i + 1] + 0.114 * p[i + 2];
+        gray[j] = g; p[i] = p[i + 1] = p[i + 2] = g;
+      }
+      ctx.putImageData(d, 0, 0);
+      res({ W, H, gray, grayCanvas: c, url });
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); rej(new Error('Kunne ikke lese bildet')); };
+    img.src = url;
+  });
+}
+// Lokal (adaptiv) terskel – tåler gjenskinn og ujevnt lys på skjermen
+function adaptiveCanvas(gray, W, H) {
+  const k = Math.max(15, Math.round(Math.max(W, H) / 64)) | 1, r = k >> 1, off = 10;
+  const ii = new Uint32Array((W + 1) * (H + 1));
+  for (let y = 0; y < H; y++) {
+    let row = 0;
+    for (let x = 0; x < W; x++) { row += gray[y * W + x]; ii[(y + 1) * (W + 1) + x + 1] = ii[y * (W + 1) + x + 1] + row; }
+  }
+  const c = document.createElement('canvas'); c.width = W; c.height = H;
+  const ctx = c.getContext('2d'), d = ctx.createImageData(W, H), p = d.data;
+  for (let y = 0; y < H; y++) {
+    const y0 = Math.max(0, y - r), y1 = Math.min(H, y + r + 1);
+    for (let x = 0; x < W; x++) {
+      const x0 = Math.max(0, x - r), x1 = Math.min(W, x + r + 1);
+      const s = ii[y1 * (W + 1) + x1] - ii[y0 * (W + 1) + x1] - ii[y1 * (W + 1) + x0] + ii[y0 * (W + 1) + x0];
+      const v = gray[y * W + x] < s / ((y1 - y0) * (x1 - x0)) - off ? 0 : 255;
+      const i = (y * W + x) * 4; p[i] = p[i + 1] = p[i + 2] = v; p[i + 3] = 255;
+    }
+  }
+  ctx.putImageData(d, 0, 0);
+  return c;
+}
+// Klipp ut et område, forstørr 3x, Otsu-terskel, fjern boksrammer, legg på hvit marg
+function cropCanvas(src, rect) {
+  const sx = Math.max(0, Math.round(rect.x0)), sy = Math.max(0, Math.round(rect.y0));
+  const sw = Math.max(4, Math.min(src.width - sx, Math.round(rect.x1 - rect.x0)));
+  const sh = Math.max(4, Math.min(src.height - sy, Math.round(rect.y1 - rect.y0)));
+  const S = 3, w = sw * S, h = sh * S, pad = 30;
+  const t = document.createElement('canvas'); t.width = w; t.height = h;
+  const tc = t.getContext('2d'); tc.imageSmoothingQuality = 'high'; tc.drawImage(src, sx, sy, sw, sh, 0, 0, w, h);
+  const p = tc.getImageData(0, 0, w, h).data, g = new Uint8Array(w * h), hist = new Array(256).fill(0);
+  for (let i = 0, j = 0; j < g.length; i += 4, j++) { g[j] = p[i]; hist[p[i]]++; }
+  // Otsu
+  let sum = 0; for (let i = 0; i < 256; i++) sum += i * hist[i];
+  let sB = 0, wB = 0, best = 0, th = 128;
+  for (let i = 0; i < 256; i++) {
+    wB += hist[i]; if (!wB) continue; const wF = g.length - wB; if (!wF) break;
+    sB += i * hist[i]; const mB = sB / wB, mF = (sum - sB) / wF, v = wB * wF * (mB - mF) * (mB - mF);
+    if (v > best) { best = v; th = i; }
+  }
+  const bin = new Uint8Array(w * h); for (let j = 0; j < g.length; j++) bin[j] = g[j] < th ? 0 : 255;
+  // fjern rammelinjer (rader/kolonner som er mer enn halvt svarte)
+  for (let y = 0; y < h; y++) { let n = 0; for (let x = 0; x < w; x++) if (!bin[y * w + x]) n++; if (n > w * 0.5) for (let x = 0; x < w; x++) bin[y * w + x] = 255; }
+  for (let x = 0; x < w; x++) { let n = 0; for (let y = 0; y < h; y++) if (!bin[y * w + x]) n++; if (n > h * 0.5) for (let y = 0; y < h; y++) bin[y * w + x] = 255; }
+  const o = document.createElement('canvas'); o.width = w + pad * 2; o.height = h + pad * 2;
+  const oc = o.getContext('2d'); oc.fillStyle = '#fff'; oc.fillRect(0, 0, o.width, o.height);
+  const od = oc.createImageData(w, h);
+  for (let j = 0, i = 0; j < bin.length; j++, i += 4) { od.data[i] = od.data[i + 1] = od.data[i + 2] = bin[j]; od.data[i + 3] = 255; }
+  oc.putImageData(od, pad, pad);
+  return o;
+}
+async function readCrop(w, src, rect, digits) {
+  await w.setParameters({ tessedit_pageseg_mode: '7', tessedit_char_whitelist: digits ? '0123456789.,-mt ' : '' });
+  const { data } = await w.recognize(cropCanvas(src, rect));
+  return (data.text || '').trim();
+}
+// Tall fra en verdiboks. Skjermen viser alltid én desimal – mangler punktumet, settes det inn.
+function parseBoxNumber(txt, min, max) {
+  const m = String(txt).match(/-?\d+(?:[.,]\d)?/); // maks én desimal (som på skjermen)
+  if (!m) return null;
+  let s = m[0].replace(',', '.');
+  let v = parseFloat(s);
+  if (!s.includes('.') && s.replace('-', '').length >= 2) v = v / 10;
+  return (isNaN(v) || v < min || v > max) ? null : Math.round(v * 100) / 100;
+}
+
+const cy = b => (b.y0 + b.y1) / 2;
+const sameRow = (a, b) => Math.abs(cy(a) - cy(b)) < Math.max(a.y1 - a.y0, b.y1 - b.y0) * 0.8;
+// Finn en etikett som består av flere ord etter hverandre på samme rad
+function findLabel(words, res, reject) {
+  for (let i = 0; i < words.length; i++) {
+    if (!res[0].test(words[i].text)) continue;
+    let k = i, ok = true, parts = [words[i].bbox];
+    for (let n = 1; n < res.length; n++) {
+      let found = -1;
+      for (let j = k + 1; j <= Math.min(words.length - 1, k + 3); j++) {
+        if (res[n].test(words[j].text) && sameRow(words[j].bbox, words[i].bbox) && words[j].bbox.x0 > words[k].bbox.x0) { found = j; break; }
+      }
+      if (found < 0) { ok = false; break; }
+      k = found; parts.push(words[found].bbox);
+    }
+    if (!ok) continue;
+    const b = { x0: Math.min(...parts.map(p => p.x0)), y0: Math.min(...parts.map(p => p.y0)),
+                x1: Math.max(...parts.map(p => p.x1)), y1: Math.max(...parts.map(p => p.y1)) };
+    if (reject && reject(b, i)) continue;
+    return b;
+  }
+  return null;
+}
+function valueRect(lb) { // verdiboksen står til høyre for etiketten
+  const w = lb.x1 - lb.x0, h = lb.y1 - lb.y0, c = cy(lb);
+  return { x0: lb.x1 + 0.3 * w, x1: lb.x1 + 1.55 * w, y0: c - 0.95 * h, y1: c + 0.95 * h };
+}
+const RE_TIME = /^([01]?\d|2[0-3])[:.]([0-5]\d)(?:[:.]([0-5]\d))?$/;
+function findClock(words, H, text) {
+  const c = words.filter(w => RE_TIME.test(w.text.trim()));
+  let timeStr = null;
+  if (c.length) {
+    const top = c.filter(w => cy(w.bbox) < H * 0.45);
+    const pool = (top.length ? top : c).sort((a, b) => b.bbox.x1 - a.bbox.x1);
+    timeStr = pool[0].text.trim().replace(/\./g, ':');
+  }
+  if (!timeStr) return null;
+  // Dato i NOV-format MM/DD/YYYY hvis den ble lest
+  const dm = text.match(/(\d{1,2})\/(\d{1,2})\/(20\d\d)/);
+  if (dm) {
+    const [hh, mi, ss] = timeStr.split(':').map(Number);
+    const t = new Date(+dm[3], +dm[1] - 1, +dm[2], hh, mi, ss || 0).getTime();
+    if (!isNaN(t) && Math.abs(Date.now() - t) < 6 * HOUR) return { str: timeStr, t };
+  }
+  return { str: timeStr, t: timeToTs(timeStr) };
+}
+function statusFromText(s) {
+  const up = s.toUpperCase();
+  if (/N[O0]RMA/.test(up)) return 'NORMAL';
+  if (/\bA?HC\b|\bCT\b|AHC/.test(up)) return 'AHC';
+  return null;
+}
+
+async function readNovScreen(file, show) {
+  const img = await loadGray(file);
+  if (!window.Tesseract && !navigator.onLine) throw new Error('Ingen nettforbindelse. OCR må lastes fra nett første gang – skriv inn verdiene manuelt.');
+  show('Laster OCR...', img.url);
+  ocrProgress = m => show((OCR_STEPS[m.status] || m.status) + '... ' + Math.round((m.progress || 0) * 100) + ' %', img.url);
+  const w = await getWorker();
+  await w.setParameters({ tessedit_pageseg_mode: '11', tessedit_char_whitelist: '' });
+  const bin = adaptiveCanvas(img.gray, img.W, img.H);
+  const { data } = await w.recognize(bin);
+  ocrProgress = null;
+  show('Leser verdier...', img.url);
+  const words = (data.words || []).filter(x => x.text && x.text.trim());
+  const text = data.text || '';
+  const out = { text, raw: {} };
+
+  // Hook Load – men ikke «Allowable Hook Load» (eller LOAD MW / SWL)
+  const hookLb = findLabel(words, [/^H[O0Q]{2}K$/i, /^L[O0Q]AD/i], (b, i) => {
+    const prev = words[i - 1];
+    return prev && /ABLE|ALLOW|^AL/i.test(prev.text) && sameRow(prev.bbox, b) && b.x0 - prev.bbox.x1 < (b.y1 - b.y0) * 2;
+  });
+  if (hookLb) { out.raw.hook = await readCrop(w, img.grayCanvas, valueRect(hookLb), true); out.hook = parseBoxNumber(out.raw.hook, 0, 400); }
+  const wireLb = findLabel(words, [/^W[I1L|]RE$/i, /^PA[I1L|]D$/i, /^[O0]UT$/i]);
+  if (wireLb) { out.raw.depth = await readCrop(w, img.grayCanvas, valueRect(wireLb), true); out.depth = parseBoxNumber(out.raw.depth, 0, 5000); }
+
+  // Status: boksen under «WINCH CRUISE CONTROL» (NORMAL - MODE / AHC ...)
+  const wcc = findLabel(words, [/^W[I1L]NCH$/, /^CRU[I1L]SE$/, /^C[O0]NTR[O0]L$/]);
+  if (wcc) {
+    const lw = wcc.x1 - wcc.x0, lh = wcc.y1 - wcc.y0, cx = (wcc.x0 + wcc.x1) / 2;
+    out.raw.status = await readCrop(w, img.grayCanvas, { x0: cx - 0.9 * lw, x1: cx + 0.9 * lw, y0: wcc.y1 + 0.4 * lh, y1: wcc.y1 + 3.2 * lh }, false);
+    out.status = statusFromText(out.raw.status);
+  }
+  if (!out.status) { // reserve: let i hele teksten (men ikke «HPU NORMAL»)
+    const t2 = text.toUpperCase().replace(/HPU\s*N[O0]RMAL(\s*M[O0]DE)?/g, '');
+    if (/N[O0]RMAL\s*[-–]\s*M/.test(t2)) out.status = 'NORMAL';
+    else if (/\bAHC\b/.test(t2)) out.status = 'AHC';
+  }
+  out.clock = findClock(words, img.H, text);
+  if (!out.clock) { // reserve: les øverste halvdel i gråtoner og let etter dato/klokke
+    const top = document.createElement('canvas'); top.width = img.W; top.height = Math.round(img.H * 0.5);
+    const tc = top.getContext('2d'); tc.filter = 'contrast(1.7)'; tc.drawImage(img.grayCanvas, 0, 0);
+    await w.setParameters({ tessedit_pageseg_mode: '11', tessedit_char_whitelist: '0123456789:/ ' });
+    const r2 = (await w.recognize(top)).data;
+    out.clock = findClock((r2.words || []).filter(x => x.text && x.text.trim()), img.H, r2.text || '');
+    out.raw.clock = (r2.text || '').trim();
+  }
+  await w.setParameters({ tessedit_pageseg_mode: '11', tessedit_char_whitelist: '' });
+  out.url = img.url;
+  return out;
+}
+
+async function handleImage(ev) {
+  const file = ev.target.files && ev.target.files[0]; ev.target.value = '';
+  if (!file) return;
+  const box = document.getElementById('ocrBox'); box.style.display = 'block';
+  const show = (html, url) => { box.innerHTML = (url ? '<img src="' + url + '" alt="">' : '') + html; };
+  show('Bilde mottatt (' + Math.round(file.size / 1024) + ' kB) – behandler...');
+  box.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  try {
+    const r = await readNovScreen(file, show);
+    let t = r.clock && r.clock.t != null ? r.clock.t : null;
+    const usedScreenTime = t != null && Math.abs(Date.now() - t) < 6 * HOUR;
+    if (!usedScreenTime) t = Date.now();
+
+    state.undo = snapshot();
+    const msgs = [];
+    const wasAhc = !!L().ahcOpen;
+    if (r.status === 'AHC') {
+      const s = doAhcStart(t);
+      if (s.started) msgs.push('<span class="ok">⚡ AHC PÅ – AHC-økt startet ' + clock(t) + (s.autoCrane ? ' (kran startet også)' : '') + '</span>');
+      else msgs.push('⚡ AHC PÅ (økt pågår allerede)');
+    } else if (r.status === 'NORMAL') {
+      if (wasAhc) {
+        if (t < L().ahcOpen) t = Date.now();
+        doAhcStop(t); msgs.push('<span class="ok">■ NORMAL - MODE – AHC-økt avsluttet og lagret ' + clock(t) + '</span>');
+      } else msgs.push('NORMAL - MODE (AHC var ikke aktiv)');
+    } else msgs.push('<span class="warn">Fant ikke AHC/NORMAL-status – ingen endring</span>');
+
+    if (r.hook != null || r.depth != null) {
+      // Avlesningen teller i HC/CT-dybden hvis AHC var aktiv før eller etter bildet
+      addReading({ t, hook: r.hook ?? null, depth: r.depth ?? null, ahc: wasAhc || !!L().ahcOpen, src: 'ocr' });
+    }
+    msgs.push(r.clock ? 'Klokke: <b>' + esc(r.clock.str) + '</b>' + (usedScreenTime ? '' : ' <span class="warn">(urimelig – brukte telefonens tid)</span>') : '<span class="warn">Fant ikke klokkeslett – brukte telefonens tid</span>');
+    msgs.push(r.hook != null ? 'Hook Load: <b>' + fmtNum(r.hook) + ' t</b>' : '<span class="warn">Fant ikke «Hook Load»</span>');
+    msgs.push(r.depth != null ? 'Wire Paid Out: <b>' + fmtNum(r.depth) + ' m</b>' : '<span class="warn">Fant ikke «Wire Paid Out»</span>');
+    msgs.push('<span style="color:var(--muted)">Kontroller verdiene. Feil? Trykk «Angre» og skriv inn manuelt.</span>');
+    const rawInfo = (r.raw.clock ? 'Klokke-søk: ' + r.raw.clock.replace(/\n+/g, ' ') + '\n' : '') + 'Status-boks: ' + (r.raw.status ?? '–') + '\nHook Load-boks: ' + (r.raw.hook ?? '–') + '\nWire Paid Out-boks: ' + (r.raw.depth ?? '–') + '\n\n' + r.text.trim();
+    show(msgs.join('<br>') + '<details style="margin-top:8px"><summary>Vis OCR-tekst</summary><div class="ocr-raw">' + esc(rawInfo) + '</div></details>', r.url);
+    save(); render(); vibrate();
+  } catch (e) {
+    ocrProgress = null;
+    show('<span class="err">⚠ ' + esc(errText(e)) + '</span><br><span style="color:var(--muted)">Skriv inn verdiene manuelt, og send meg gjerne denne feilmeldingen.</span>');
+  }
+}
+
+/* ================= KOPIER / DEL / BACKUP ================= */
+async function copyText(txt) {
+  try { await navigator.clipboard.writeText(txt); toast('Kopiert: ' + (txt.length > 30 ? 'rapport' : txt)); }
+  catch (e) {
+    const ta = document.createElement('textarea'); ta.value = txt; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    try { document.execCommand('copy'); toast('Kopiert'); } catch (e2) { toast('Kopiering feilet', true); }
+    ta.remove();
+  }
+}
+async function shareText(txt) {
+  if (navigator.share) { try { await navigator.share({ title: 'Subsea Lift – NOV 350t AHC', text: txt }); } catch (e) {} }
+  else copyText(txt);
+}
+function exportJson() {
+  const d = new Date(), stamp = d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate()) + '_' + pad(d.getHours()) + pad(d.getMinutes());
+  const blob = new Blob([JSON.stringify(snapshot(), null, 2)], { type: 'application/json' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'nov350t_backup_' + stamp + '.json';
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+}
+function importJson(ev) {
+  const file = ev.target.files && ev.target.files[0]; ev.target.value = '';
+  if (!file) return;
+  const r = new FileReader();
+  r.onload = () => {
+    try {
+      const s = JSON.parse(r.result);
+      if (!s || !s.imca || !s.lift || !Array.isArray(s.history)) throw new Error();
+      if (!confirm('Gjenopprette backup? (' + s.history.length + ' løft, IMCA ' + hhmm(s.imca.craneMs) + ')\nNåværende data erstattes.')) return;
+      state = s; save(); fillInputs(); render(); toast('Backup gjenopprettet');
+    } catch (e) { toast('Ugyldig backupfil', true); }
+  };
+  r.readAsText(file);
+}
+
+/* ================= DIVERSE ================= */
+let toastTimer;
+function toast(msg, warn) {
+  const t = document.getElementById('toast'); t.textContent = msg;
+  t.style.background = warn ? '#7f1d1d' : '#065f46'; t.style.color = warn ? '#fee2e2' : '#d1fae5';
+  t.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 2500);
+}
+function vibrate() { try { navigator.vibrate && navigator.vibrate(40); } catch (e) {} }
+function updateNet() {
+  const b = document.getElementById('netBadge'), on = navigator.onLine;
+  b.textContent = on ? 'ONLINE' : 'OFFLINE'; b.className = 'net ' + (on ? 'net-on' : 'net-off');
+}
+// Hold skjermen våken mens kranen går
+let wakeLock = null;
+async function updateWakeLock() {
+  try {
+    if (!('wakeLock' in navigator)) return;
+    if (L().craneOpen && !wakeLock && !document.hidden) {
+      wakeLock = await navigator.wakeLock.request('screen');
+      wakeLock.addEventListener('release', () => { wakeLock = null; });
+    } else if (!L().craneOpen && wakeLock) { await wakeLock.release(); wakeLock = null; }
+  } catch (e) {}
+}
+window.addEventListener('online', updateNet);
+window.addEventListener('offline', updateNet);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) render(); });
+window.addEventListener('storage', e => { if (e.key === KEY) { state = loadState(); fillInputs(); render(); } });
+
+save(); fillInputs(); updateNet(); render();
+if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
+setInterval(tick, 1000);
+</script>
+</body>
+</html>
