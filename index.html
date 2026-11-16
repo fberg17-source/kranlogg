@@ -123,6 +123,12 @@
     .help-box table { border-collapse: collapse; width: 100%; font-size: 0.88rem; margin: 6px 0; }
     .help-box td, .help-box th { border: 1px solid var(--card-border); padding: 5px 7px; text-align: left; }
     .help-close { position: sticky; top: 0; margin-bottom: 10px; }
+    .help-overlay.welcome { display: none; align-items: center; justify-content: center; }
+    .help-overlay.welcome.open { display: flex; }
+    .welcome-box { background: var(--card); border: 2px solid var(--amber); border-radius: 18px; padding: 26px 22px; text-align: center; width: min(88vw, 340px); }
+    .welcome-box h2 { margin: 12px 0 6px; color: #fff; font-size: 1.4rem; }
+    .welcome-by { color: var(--amber); font-size: 1.25rem; font-weight: 800; margin-bottom: 4px; }
+    .welcome-ver { color: var(--muted); font-size: 0.85rem; margin-bottom: 18px; }
     .version { text-align: center; color: #475569; font-size: 0.75rem; margin-top: 10px; }
     .crane-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 14px; }
     .crane-tabs button { padding: 14px 8px; font-size: 1.05rem; background: var(--card); border: 2px solid var(--card-border); color: var(--muted); }
@@ -301,7 +307,23 @@
   </details>
 </section>
 
-<div class="version">Subsea Kranlogg V1.1</div>
+<div class="version">Subsea Kranlogg V1.1 · Made by Frank Berg</div>
+
+<!-- VELKOMST (vises bare første gang) -->
+<div id="welcomeOverlay" class="help-overlay welcome" onclick="if (event.target === this) closeWelcome()">
+  <div class="welcome-box">
+    <svg width="84" height="84" viewBox="0 0 100 100" aria-hidden="true">
+      <rect width="100" height="100" rx="20" fill="#0b1120" stroke="#f59e0b" stroke-width="4"/>
+      <path d="M20 82h60v8H20zM32 82V26l48-10v10L42 35v47z" fill="#f59e0b"/>
+      <path d="M74 26v28" stroke="#38bdf8" stroke-width="5"/>
+      <circle cx="74" cy="58" r="6" fill="none" stroke="#38bdf8" stroke-width="4"/>
+    </svg>
+    <h2>Subsea Kranlogg</h2>
+    <div class="welcome-by">Made by Frank Berg</div>
+    <div class="welcome-ver">V1.1</div>
+    <button class="btn-amber" onclick="closeWelcome()">OK</button>
+  </div>
+</div>
 
 <!-- HJELP / HELP -->
 <div id="helpOverlay" class="help-overlay" onclick="if (event.target === this) closeHelp()">
@@ -1456,6 +1478,10 @@ function toggleLang() {
   save(); applyLang(); render();
 }
 function openHelp() { document.getElementById('helpOverlay').classList.add('open'); document.getElementById('helpOverlay').scrollTop = 0; }
+function closeWelcome() {
+  document.getElementById('welcomeOverlay').classList.remove('open');
+  root.settings = root.settings || {}; root.settings.welcomed = true; save();
+}
 function closeHelp() { document.getElementById('helpOverlay').classList.remove('open'); }
 
 /* ================= DIVERSE ================= */
@@ -1488,6 +1514,7 @@ window.addEventListener('storage', e => { if (e.key === KEY) { root = loadRoot()
 
 save(); fillInputs(); updateNet(); applyLang(); render();
 if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
+if (!(root.settings && root.settings.welcomed)) document.getElementById('welcomeOverlay').classList.add('open'); // bare første gang
 setInterval(tick, 1000);
 </script>
 </body>
