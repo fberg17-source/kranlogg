@@ -109,12 +109,29 @@
     .file-btn:active { transform: scale(0.98); }
     .btn-outline-big { background: transparent; border: 2px solid var(--amber); color: #fcd34d; font-size: 1rem; padding: 14px 12px; }
     .vh { position: absolute; width: 1px; height: 1px; opacity: 0; overflow: hidden; left: 0; top: 0; }
+    .hdr-right { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+    .hdr-btns { display: flex; gap: 6px; }
+    .hdr-btn { width: 40px; height: 34px; padding: 0; font-size: 0.9rem; border-radius: 8px; background: #1e293b; border: 1px solid var(--card-border); color: #fcd34d; }
+    .help-overlay { position: fixed; inset: 0; background: rgba(2,6,23,0.92); z-index: 20; display: none; overflow-y: auto; padding: 12px; padding-top: calc(12px + env(safe-area-inset-top)); }
+    .help-overlay.open { display: block; }
+    .help-box { background: var(--card); border: 1px solid var(--card-border); border-radius: 14px; padding: 16px; max-width: 720px; margin: 0 auto 40px; line-height: 1.5; font-size: 0.95rem; }
+    .help-box h2 { margin: 0 0 4px; color: var(--amber); font-size: 1.25rem; }
+    .help-box h3 { margin: 18px 0 6px; color: #fcd34d; font-size: 1rem; }
+    .help-box ul, .help-box ol { padding-left: 20px; margin: 6px 0; }
+    .help-box li { margin: 3px 0; }
+    .help-box code { background: #0b1120; padding: 1px 5px; border-radius: 4px; }
+    .help-box table { border-collapse: collapse; width: 100%; font-size: 0.88rem; margin: 6px 0; }
+    .help-box td, .help-box th { border: 1px solid var(--card-border); padding: 5px 7px; text-align: left; }
+    .help-close { position: sticky; top: 0; margin-bottom: 10px; }
+    .version { text-align: center; color: #475569; font-size: 0.75rem; margin-top: 10px; }
     .crane-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 14px; }
     .crane-tabs button { padding: 14px 8px; font-size: 1.05rem; background: var(--card); border: 2px solid var(--card-border); color: var(--muted); }
     .crane-tabs button.on { background: #3f2a06; border-color: var(--amber); color: #fcd34d; }
     .winch-tabs { margin-top: -6px; }
     .winch-tabs button { padding: 10px 8px; font-size: 0.95rem; }
     .winch-tabs button.on { background: #082f49; border-color: var(--blue); color: #7dd3fc; }
+    .chk { display: flex; gap: 8px; align-items: center; font-size: 0.82rem; color: var(--muted); margin: 0 0 8px; }
+    .chk input { width: 20px; height: 20px; accent-color: var(--amber); }
     .crane-tabs .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: var(--green); margin-left: 6px; vertical-align: middle; }
     .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); max-width: 90%; text-align: center;
       padding: 11px 16px; border-radius: 10px; font-weight: 700; font-size: 0.92rem; opacity: 0; transition: opacity 0.2s; pointer-events: none; z-index: 10; }
@@ -137,7 +154,13 @@
       <h1>Subsea Kranlogg</h1>
     </div>
   </div>
-  <div id="netBadge" class="net net-on">ONLINE</div>
+  <div class="hdr-right">
+    <div id="netBadge" class="net net-on">ONLINE</div>
+    <div class="hdr-btns">
+      <button class="hdr-btn" id="langBtn" onclick="toggleLang()" title="Språk / Language">EN</button>
+      <button class="hdr-btn" onclick="openHelp()" title="Hjelp / Help">?</button>
+    </div>
+  </div>
 </header>
 
 <!-- KRANVALG -->
@@ -245,6 +268,7 @@
 
   <!-- RAPPORT -->
   <div class="section-label">Rapport – New Operation Log Entry</div>
+  <label class="chk"><input type="checkbox" id="wholeMeters" onchange="setWholeMeters()"> Hele meter på wire i rapporten (av = én desimal, f.eks. 1787.6 m)</label>
   <div id="liveReport"></div>
   <div class="row">
     <button class="btn-amber" style="font-size:0.95rem; padding:14px;" onclick="copyText(reportText(currentSummary()))">📋 Kopier alt</button>
@@ -277,6 +301,185 @@
   </details>
 </section>
 
+<div class="version">Subsea Kranlogg V1.1</div>
+
+<!-- HJELP / HELP -->
+<div id="helpOverlay" class="help-overlay" onclick="if (event.target === this) closeHelp()">
+  <div class="help-box">
+    <button class="btn-amber help-close" onclick="closeHelp()" id="helpCloseBtn">✕ Lukk hjelp</button>
+
+    <div id="helpNo">
+      <h2>Hjelp – Subsea Kranlogg V1.1</h2>
+      <p>Kranlogg for 350t AHC-kranen og 50t-kranen. Appen fører IMCA-timer for hele turen og lager rapporten du limer inn i PC-loggen («New Operation Log Entry»).</p>
+
+      <h3>1. Kom i gang</h3>
+      <ul>
+        <li>Åpne <b>fberg17-source.github.io/kranlogg</b> i Chrome (Android) eller Safari (iPhone).</li>
+        <li>Android: ⋮ → <b>Installer app</b>. iPhone: Del → <b>Legg til på Hjem-skjerm</b>.</li>
+        <li>Åpne appen én gang med nett. Etter det virker alt uten nett, også bildeavlesningen.</li>
+        <li>Alle data lagres bare på din telefon. Hver bruker har sin egen logg.</li>
+      </ul>
+
+      <h3>2. Velg kran og vinsj</h3>
+      <ul>
+        <li>Øverst: <b>350t AHC-kran</b> / <b>50t-kran</b> og <b>Main winch (MW)</b> / <b>Aux winch (AW)</b>. Hver kombinasjon har sin egen logg (fire i alt).</li>
+        <li>Grønn prikk på en knapp = kranen går i den loggen.</li>
+        <li>Tar du bilde av NOV-skjermen, velges MW/AW automatisk ut fra hvilken knapp som lyser grønt.</li>
+      </ul>
+
+      <h3>3. Et løft steg for steg</h3>
+      <ol>
+        <li>Skriv operasjonsnavn og <b>Comments</b> (initialer, f.eks. MB RB).</li>
+        <li>Trykk <b>Kran START</b> når løftet begynner.</li>
+        <li>Ta bilde av NOV-skjermen underveis – særlig når AHC slås på og av, og ved største dybde/last.</li>
+        <li>Trykk <b>Kran STOPP</b> når kranen er ferdig.</li>
+        <li>Kopier feltene i rapporten inn i PC-loggen.</li>
+        <li>Trykk <b>Lagre løft i historikk &amp; start nytt</b>. IMCA-timene beholdes.</li>
+      </ol>
+      <p>Glemte du å trykke? Skriv klokkeslettet i feltet «Klokkeslett for neste START/STOPP» før du trykker.</p>
+
+      <h3>4. Bilde av NOV-skjermen</h3>
+      <ul>
+        <li>Appen leser: <b>status</b> (NORMAL - MODE / AHC … - MODE), <b>klokke</b>, <b>Hook Load</b>, <b>Wire Paid Out</b>, aktiv vinsj (MW/AW) og <b>Hook pos</b> hvis AHC/ACT-menyen er åpen.</li>
+        <li>AHC-modus på skjermen starter en AHC-økt. NORMAL - MODE avslutter og lagrer den.</li>
+        <li>Virker på alle menyene (MAIN WINCH, WINCH CRUISE CONTROL, AHC/ACT …).</li>
+        <li><b>Tips:</b> gå nær, så skjermfeltet fyller bildet. Hold telefonen rett foran, og unngå gjenskinn.</li>
+        <li>Kontroller alltid tallene. Feil? Trykk <b>Angre siste avlesning</b> og skriv inn manuelt.</li>
+        <li>Åpner ikke kameraet? Ta bildet med vanlig kamera og bruk <b>Velg bilde fra galleriet</b>.</li>
+        <li>Er Hook Load over kranens maks (350 t / 50 t), blir den ikke lagret – det er nesten alltid en desimalfeil.</li>
+      </ul>
+
+      <h3>5. AHC-økter og «Wire paid out during HC/CT»</h3>
+      <ul>
+        <li>Hver gang AHC slås på og av, blir det en egen <b>AHC-økt</b>.</li>
+        <li>Wireintervallet regnes per økt. Eksempel: AHC ved 513.3 m tidlig i løftet og igjen 1787.6–1794.0 m ved bunnen gir <code>513.3 - 513.3; 1787.6 - 1794.0 m</code> – aldri ett falskt intervall 513–1794 m.</li>
+        <li>Ta bilde (eller registrer dybde) både når AHC starter og stopper, så blir intervallet riktig.</li>
+      </ul>
+
+      <h3>6. Manuell avlesning</h3>
+      <ul>
+        <li>Skriv Hook Load og/eller Wire Paid Out og trykk <b>Registrer avlesning</b>. Både komma og punktum går.</li>
+        <li>AHC START/STOPP-knappene virker også manuelt.</li>
+        <li>Avlesninger kan slettes med ✕ i listen.</li>
+      </ul>
+
+      <h3>7. Rapporten og desimaltimer</h3>
+      <p>Tider i rapporten er i <b>desimaltimer</b>, som PC-loggen bruker. Minuttene deles på 60:</p>
+      <table><tr><th>Vanlig tid</th><th>Desimaltimer</th></tr><tr><td>8:42</td><td>8.70</td></tr><tr><td>0:52</td><td>0.87</td></tr><tr><td>0:30</td><td>0.50</td></tr></table>
+      <ul>
+        <li>Wire vises med én desimal (1787.6 m). Huk av «Hele meter» hvis du vil ha 1788 m.</li>
+        <li>Last vises med én desimal i ton (1.1 ton).</li>
+        <li>Hvert felt har sin egen <b>Kopier</b>-knapp.</li>
+      </ul>
+
+      <h3>8. IMCA-logg og nullstilling</h3>
+      <ul>
+        <li>IMCA-ruta teller samlet krantid og AHC-tid for hele turen i vanlig tid (TT:MM), med desimaltimer under.</li>
+        <li>Den nullstilles <b>aldri</b> automatisk – bare med <b>Nullstill tur</b> etter endt tur.</li>
+        <li>Sletter du et løft i historikken, påvirkes ikke IMCA-timene.</li>
+      </ul>
+
+      <h3>9. Backup</h3>
+      <ul>
+        <li>«Backup og gjenoppretting» nederst: last ned backup før nullstilling, telefonbytte eller tømming av nettleserdata.</li>
+        <li>Ført i feil kran/vinsj? Bruk «Bytt dataene med».</li>
+      </ul>
+
+      <h3>10. Feilsøking</h3>
+      <ul>
+        <li><b>Bildeavlesning starter ikke:</b> trenger nett første gang. Skriv inn manuelt imens.</li>
+        <li><b>Fant ikke verdier:</b> ta nytt bilde nærmere og rett forfra.</li>
+        <li><b>Appen er ikke oppdatert:</b> lukk den helt og åpne igjen med nett.</li>
+      </ul>
+    </div>
+
+    <div id="helpEn" style="display:none">
+      <h2>Help – Subsea Crane Log V1.1</h2>
+      <p>Crane log for the 350t AHC crane and the 50t crane. The app keeps IMCA hours for the whole trip and builds the report you paste into the PC log ("New Operation Log Entry").</p>
+
+      <h3>1. Getting started</h3>
+      <ul>
+        <li>Open <b>fberg17-source.github.io/kranlogg</b> in Chrome (Android) or Safari (iPhone).</li>
+        <li>Android: ⋮ → <b>Install app</b>. iPhone: Share → <b>Add to Home Screen</b>.</li>
+        <li>Open the app once while online. After that everything works offline, including photo reading.</li>
+        <li>All data is stored on your phone only. Each user has their own log.</li>
+      </ul>
+
+      <h3>2. Choose crane and winch</h3>
+      <ul>
+        <li>At the top: <b>350t AHC crane</b> / <b>50t crane</b> and <b>Main winch (MW)</b> / <b>Aux winch (AW)</b>. Each combination has its own log (four in total).</li>
+        <li>Green dot on a button = the crane is running in that log.</li>
+        <li>When you photograph the NOV screen, MW/AW is selected automatically from the button that is lit green.</li>
+      </ul>
+
+      <h3>3. A lift step by step</h3>
+      <ol>
+        <li>Enter the operation name and <b>Comments</b> (initials, e.g. MB RB).</li>
+        <li>Press <b>Crane START</b> when the lift begins.</li>
+        <li>Photograph the NOV screen during the lift – especially when AHC is switched on and off, and at max depth/load.</li>
+        <li>Press <b>Crane STOP</b> when the crane is finished.</li>
+        <li>Copy the report fields into the PC log.</li>
+        <li>Press <b>Save lift to history &amp; start new</b>. IMCA hours are kept.</li>
+      </ol>
+      <p>Forgot to press? Enter the time in "Time for next START/STOP" before pressing.</p>
+
+      <h3>4. Photo of the NOV screen</h3>
+      <ul>
+        <li>The app reads: <b>status</b> (NORMAL - MODE / AHC … - MODE), <b>clock</b>, <b>Hook Load</b>, <b>Wire Paid Out</b>, active winch (MW/AW) and <b>Hook pos</b> if the AHC/ACT menu is open.</li>
+        <li>AHC mode on the screen starts an AHC session. NORMAL - MODE ends and saves it.</li>
+        <li>Works on all menus (MAIN WINCH, WINCH CRUISE CONTROL, AHC/ACT …).</li>
+        <li><b>Tip:</b> get close so the screen fills the photo. Hold the phone straight in front and avoid glare.</li>
+        <li>Always check the numbers. Wrong? Press <b>Undo last reading</b> and enter manually.</li>
+        <li>Camera won't open? Take the photo with the normal camera and use <b>Choose photo from gallery</b>.</li>
+        <li>If Hook Load is above the crane's max (350 t / 50 t) it is not saved – that is almost always a decimal error.</li>
+      </ul>
+
+      <h3>5. AHC sessions and "Wire paid out during HC/CT"</h3>
+      <ul>
+        <li>Each time AHC is switched on and off, it becomes a separate <b>AHC session</b>.</li>
+        <li>The wire range is calculated per session. Example: AHC at 513.3 m early in the lift and again 1787.6–1794.0 m at the bottom gives <code>513.3 - 513.3; 1787.6 - 1794.0 m</code> – never one false range 513–1794 m.</li>
+        <li>Take a photo (or enter depth) both when AHC starts and stops, so the range is correct.</li>
+      </ul>
+
+      <h3>6. Manual reading</h3>
+      <ul>
+        <li>Enter Hook Load and/or Wire Paid Out and press <b>Add reading</b>. Both comma and point work.</li>
+        <li>The AHC START/STOP buttons also work manually.</li>
+        <li>Readings can be deleted with ✕ in the list.</li>
+      </ul>
+
+      <h3>7. The report and decimal hours</h3>
+      <p>Times in the report are in <b>decimal hours</b>, as used by the PC log. Minutes are divided by 60:</p>
+      <table><tr><th>Clock time</th><th>Decimal hours</th></tr><tr><td>8:42</td><td>8.70</td></tr><tr><td>0:52</td><td>0.87</td></tr><tr><td>0:30</td><td>0.50</td></tr></table>
+      <ul>
+        <li>Wire is shown with one decimal (1787.6 m). Tick "Whole metres" if you want 1788 m.</li>
+        <li>Load is shown with one decimal in tons (1.1 ton).</li>
+        <li>Each field has its own <b>Copy</b> button.</li>
+      </ul>
+
+      <h3>8. IMCA log and reset</h3>
+      <ul>
+        <li>The IMCA box counts total crane time and AHC time for the whole trip in clock time (HH:MM), with decimal hours below.</li>
+        <li>It is <b>never</b> reset automatically – only with <b>Reset trip</b> after the trip has ended.</li>
+        <li>Deleting a lift from history does not change the IMCA hours.</li>
+      </ul>
+
+      <h3>9. Backup</h3>
+      <ul>
+        <li>"Backup and restore" at the bottom: download a backup before resetting, changing phone or clearing browser data.</li>
+        <li>Logged on the wrong crane/winch? Use "Swap data with".</li>
+      </ul>
+
+      <h3>10. Troubleshooting</h3>
+      <ul>
+        <li><b>Photo reading won't start:</b> needs internet the first time. Enter values manually meanwhile.</li>
+        <li><b>Values not found:</b> take a new photo closer and straight on.</li>
+        <li><b>App not updated:</b> close it completely and open again while online.</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
 <div id="toast" class="toast"></div>
 
 <script>
@@ -295,6 +498,7 @@ function seedState() {
 
 // Hver kran (350t og 50t) har sin egen IMCA-logg, sitt aktive løft og sin historikk.
 // Én logg per kran og vinsj (wire): 350t MW/AW og 50t MW/AW
+const CRANE_MAX = { '350': 350, '50': 50 }; // maks last per kran (sikkerhetssjekk mot desimalfeil)
 const CRANES = {
   '350-MW': { crane: '350', winch: 'MW', title: 'NOV 350t AHC – MAIN WINCH', short: '350t MW' },
   '350-AW': { crane: '350', winch: 'AW', title: 'NOV 350t AHC – AUX WINCH', short: '350t AW' },
@@ -319,7 +523,7 @@ function loadRoot() {
 function save() {
   root.cranes[root.active] = state;
   try { localStorage.setItem(KEY, JSON.stringify(root)); }
-  catch (e) { toast('Kunne ikke lagre – ta backup!', true); }
+  catch (e) { toast(T('Kunne ikke lagre – ta backup!'), true); }
 }
 function snapshot() { const c = JSON.parse(JSON.stringify(state)); c.undo = null; return c; }
 
@@ -333,6 +537,8 @@ const clock = t => { const d = new Date(t); return pad(d.getHours()) + ':' + pad
 const clockS = t => { const d = new Date(t); return clock(t) + ':' + pad(d.getSeconds()); };
 const date = t => { const d = new Date(t); return pad(d.getDate()) + '.' + pad(d.getMonth() + 1) + '.' + d.getFullYear(); };
 const fmtNum = v => { if (v == null || isNaN(v)) return ''; return String(Math.round(v * 100) / 100); };
+// Wirelengde i rapporten: én desimal (standard) eller hele meter (innstilling)
+const fmtWire = v => (root && root.settings && root.settings.wholeMeters) ? String(Math.round(v)) : Number(v).toFixed(1);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 function parseNum(s) {
   if (s == null) return NaN;
@@ -394,6 +600,7 @@ function doAhcStart(t) {
   if (!l.craneOpen) { doCraneStart(t); autoCrane = true; }
   if (t < l.craneOpen) t = l.craneOpen;
   l.ahcOpen = t;
+  l.ahcSess = (l.ahcSess || 0) + 1; // ny AHC-økt – wireintervallet regnes per økt
   return { started: true, autoCrane };
 }
 
@@ -401,10 +608,10 @@ function act(fn) {
   try { fn(); save(); render(); vibrate(); }
   catch (e) { toast(e.message, true); }
 }
-function craneStart() { act(() => { if (doCraneStart(takeManTime())) toast('Kran startet'); }); }
-function craneStop() { act(() => { if (doCraneStop(takeManTime())) toast('Kran stoppet – tiden er lagt til IMCA'); }); }
+function craneStart() { act(() => { if (doCraneStart(takeManTime())) toast(T('Kran startet')); }); }
+function craneStop() { act(() => { if (doCraneStop(takeManTime())) toast(T('Kran stoppet – tiden er lagt til IMCA')); }); }
 function ahcStart() { act(() => { const r = doAhcStart(takeManTime()); if (r.started) toast(r.autoCrane ? 'AHC startet (kran startet også)' : 'AHC startet'); }); }
-function ahcStop() { act(() => { if (doAhcStop(takeManTime())) toast('AHC stoppet'); }); }
+function ahcStop() { act(() => { if (doAhcStop(takeManTime())) toast(T('AHC stoppet')); }); }
 
 function switchCrane(crane, winch) {
   const cur = CRANES[root.active];
@@ -412,16 +619,17 @@ function switchCrane(crane, winch) {
   if (!CRANES[k] || k === root.active) return;
   save(); root.active = k; state = root.cranes[k]; save();
   document.getElementById('ocrBox').style.display = 'none';
-  fillInputs(); render(); toast('Byttet til ' + CRANES[k].short);
+  fillInputs(); render(); toast(T('Byttet til ') + CRANES[k].short);
 }
 function swapCranes() {
   const other = document.getElementById('swapTarget').value;
   if (!CRANES[other] || other === root.active) return;
   const a = root.cranes[root.active], b = root.cranes[other];
-  if (a.lift.craneOpen || b.lift.craneOpen) { toast('Stopp kranen først', true); return; }
-  if (!confirm('Bytte all data (IMCA, aktivt løft og historikk) mellom ' + CRANES[root.active].short + ' og ' + CRANES[other].short + '?')) return;
-  save(); root.cranes[root.active] = b; root.cranes[other] = a; state = root.cranes[root.active]; save(); fillInputs(); render(); toast('Dataene er byttet');
+  if (a.lift.craneOpen || b.lift.craneOpen) { toast(T('Stopp kranen først'), true); return; }
+  if (!confirm(T('Bytte all data (IMCA, aktivt løft og historikk) mellom ') + CRANES[root.active].short + T(' og ') + CRANES[other].short + '?')) return;
+  save(); root.cranes[root.active] = b; root.cranes[other] = a; state = root.cranes[root.active]; save(); fillInputs(); render(); toast(T('Dataene er byttet'));
 }
+function setWholeMeters() { root.settings = root.settings || {}; root.settings.wholeMeters = document.getElementById('wholeMeters').checked; save(); render(); }
 function setComment() { L().comment = document.getElementById('liftComment').value; save(); renderReportOnly(); }
 function setName() { L().name = document.getElementById('opName').value; save(); renderReportOnly(); }
 
@@ -431,35 +639,46 @@ function addManualReading() {
   const hEl = document.getElementById('manHook'), dEl = document.getElementById('manDepth');
   const hook = hEl.value.trim() ? parseNum(hEl.value) : null;
   const depth = dEl.value.trim() ? parseNum(dEl.value) : null;
-  if (hook === null && depth === null) { toast('Skriv inn Hook Load og/eller dybde', true); return; }
-  if ((hook !== null && isNaN(hook)) || (depth !== null && isNaN(depth))) { toast('Ugyldig tall – bruk f.eks. 1,7 eller 1.7', true); return; }
+  if (hook === null && depth === null) { toast(T('Skriv inn Hook Load og/eller dybde'), true); return; }
+  if ((hook !== null && isNaN(hook)) || (depth !== null && isNaN(depth))) { toast(T('Ugyldig tall – bruk f.eks. 1,7 eller 1.7'), true); return; }
+  const maxT = CRANE_MAX[CRANES[root.active].crane];
+  if (hook !== null && hook > maxT && !confirm(T('Hook Load') + ' ' + hook + ' t ' + T('er over kranens maks') + ' (' + maxT + ' t). ' + T('Desimalfeil? Lagre likevel?'))) return;
   state.undo = snapshot();
-  addReading({ t: Date.now(), hook, depth, ahc: !!L().ahcOpen, src: 'man' });
+  addReading({ t: Date.now(), hook, depth, ahc: L().ahcOpen ? (L().ahcSess || 1) : 0, src: 'man' });
   hEl.value = ''; dEl.value = '';
-  save(); render(); toast('Avlesning registrert');
+  save(); render(); toast(T('Avlesning registrert'));
 }
 function delReading(i) {
   const l = L(); if (!l.readings[i]) return;
-  if (!confirm('Slette denne avlesningen?')) return;
+  if (!confirm(T('Slette denne avlesningen?'))) return;
   l.readings.splice(i, 1); save(); render();
 }
 function undo() {
   if (!state.undo) return;
-  if (!confirm('Angre siste avlesning/kamerabilde?')) return;
-  state = state.undo; state.undo = null; save(); fillInputs(); render(); toast('Angret');
+  if (!confirm(T('Angre siste avlesning/kamerabilde?'))) return;
+  state = state.undo; state.undo = null; save(); fillInputs(); render(); toast(T('Angret'));
 }
 
 /* ================= SAMMENDRAG / RAPPORT ================= */
+// HC/CT-wire regnes per AHC-økt (START→STOPP). Økter slås aldri sammen til ett stort intervall.
 function summarize(readings) {
-  let maxHook = null, maxDepth = null, hcMin = null, hcMax = null;
+  let maxHook = null, maxDepth = null; const sess = new Map();
   for (const r of readings) {
     if (r.hook != null && !isNaN(r.hook)) maxHook = maxHook == null ? r.hook : Math.max(maxHook, r.hook);
     if (r.depth != null && !isNaN(r.depth)) {
       maxDepth = maxDepth == null ? r.depth : Math.max(maxDepth, r.depth);
-      if (r.ahc) { hcMin = hcMin == null ? r.depth : Math.min(hcMin, r.depth); hcMax = hcMax == null ? r.depth : Math.max(hcMax, r.depth); }
+      if (r.ahc) {
+        const k = r.ahc === true ? 1 : r.ahc, cur = sess.get(k);
+        sess.set(k, cur ? [Math.min(cur[0], r.depth), Math.max(cur[1], r.depth)] : [r.depth, r.depth]);
+      }
     }
   }
-  return { maxHook, maxDepth, hcMin, hcMax };
+  const hcRanges = [...sess.entries()].sort((a, b) => a[0] - b[0]).map(e => e[1]);
+  return { maxHook, maxDepth, hcRanges };
+}
+function hcRangesOf(s) { // eldre lagrede løft har bare hcMin/hcMax
+  if (Array.isArray(s.hcRanges)) return s.hcRanges;
+  return s.hcMin != null ? [[s.hcMin, s.hcMax]] : [];
 }
 function currentSummary() {
   const now = Date.now(), l = L();
@@ -468,15 +687,16 @@ function currentSummary() {
 }
 // Samme felt og format som i PC-loggen (Operation log): hele meter, tonn, timer med desimaler
 function reportFields(s) {
-  const m = v => String(Math.round(v));
-  const hc = s.hcMin != null ? m(s.hcMin) + ' - ' + m(s.hcMax) : null;
+  const hcList = hcRangesOf(s).map(r => fmtWire(r[0]) + ' - ' + fmtWire(r[1]));
+  const hc = hcList.length ? hcList.join('; ') : null;
   const dt = s.start ? date(s.start) + ' ' + clock(s.start) : null;
+  const ton = v => Number(v).toFixed(1);
   return [
     ['Date/time', dt || '–', dt || ''],
     ['Operation type', 'Subsea Lift', 'Subsea Lift'],
     ['Total use time', decH(s.craneMs) + ' hours', decH(s.craneMs)],
-    ['Max tension in hook during operation', s.maxHook != null ? fmtNum(s.maxHook) + ' ton' : '–', s.maxHook != null ? fmtNum(s.maxHook) : ''],
-    ['Max wire paid out during operation', s.maxDepth != null ? m(s.maxDepth) + ' m' : '–', s.maxDepth != null ? m(s.maxDepth) : ''],
+    ['Max tension in hook during operation', s.maxHook != null ? ton(s.maxHook) + ' ton' : '–', s.maxHook != null ? ton(s.maxHook) : ''],
+    ['Max wire paid out during operation', s.maxDepth != null ? fmtWire(s.maxDepth) + ' m' : '–', s.maxDepth != null ? fmtWire(s.maxDepth) : ''],
     ['Wire paid out during HC/CT', hc ? hc + ' m' : (s.ahcMs > 0 ? '–' : 'N/A'), hc || ''],
     ['Use time in HC/CT', decH(s.ahcMs) + ' hours', decH(s.ahcMs)],
     ['Comments', s.comment || '–', s.comment || '']
@@ -495,41 +715,41 @@ function reportHtml(s) {
   return '<div class="report">' + reportFields(s).map(f => {
     const idx = copyBank.push(f[2]) - 1;
     return '<div class="rep-row"><div class="k">' + esc(f[0]) + '</div><div class="v">' + esc(f[1]) + '</div>' +
-      (f[2] ? '<button class="c" onclick="copyText(copyBank[' + idx + '])">Kopier</button>' : '<span style="width:58px"></span>') + '</div>';
+      (f[2] ? '<button class="c" onclick="copyText(copyBank[' + idx + '])">' + T('Kopier') + '</button>' : '<span style="width:58px"></span>') + '</div>';
   }).join('') + '</div>';
 }
 
 /* ================= LAGRE LØFT ================= */
 function saveLift() {
   const l = L(), now = Date.now();
-  if (!l.craneOpen && l.craneAccum === 0 && !l.readings.length) { toast('Ingen data i aktivt løft', true); return; }
+  if (!l.craneOpen && l.craneAccum === 0 && !l.readings.length) { toast(T('Ingen data i aktivt løft'), true); return; }
   if (l.craneOpen) {
-    if (!confirm('Kranen går fortsatt. Stoppe kranen nå (' + clock(now) + ') og lagre løftet?')) return;
+    if (!confirm(T('Kranen går fortsatt. Stoppe kranen nå (') + clock(now) + T(') og lagre løftet?'))) return;
     try { doCraneStop(now); } catch (e) { toast(e.message, true); return; }
-  } else if (!confirm('Lagre løftet i historikken og starte nytt?\nIMCA-timene beholdes.')) return;
+  } else if (!confirm(T('Lagre løftet i historikken og starte nytt?\nIMCA-timene beholdes.'))) return;
   const s = currentSummary();
   state.history.unshift({
     id: now, name: (l.name || '').trim() || 'Subsea Lift', comment: (l.comment || '').trim(), start: l.start, end: l.end || null,
-    craneMs: s.craneMs, ahcMs: s.ahcMs, maxHook: s.maxHook, maxDepth: s.maxDepth, hcMin: s.hcMin, hcMax: s.hcMax,
+    craneMs: s.craneMs, ahcMs: s.ahcMs, maxHook: s.maxHook, maxDepth: s.maxDepth, hcRanges: s.hcRanges,
     readings: l.readings
   });
   state.lift = blankLift(); state.undo = null;
-  save(); fillInputs(); render(); toast('Løft lagret – klar for nytt løft');
+  save(); fillInputs(); render(); toast(T('Løft lagret – klar for nytt løft'));
 }
 function delHistory(id) {
   const h = state.history.find(x => x.id === id); if (!h) return;
-  if (!confirm('Slette «' + h.name + '» fra historikken?\n(IMCA-timene påvirkes ikke.)')) return;
+  if (!confirm(T('Slette «') + h.name + T('» fra historikken?\n(IMCA-timene påvirkes ikke.)'))) return;
   state.history = state.history.filter(x => x.id !== id); save(); render();
 }
 function copyHistory(id) { const h = state.history.find(x => x.id === id); if (h) copyText(reportText(h)); }
 
 function resetTrip() {
-  if (L().craneOpen || L().ahcOpen) { toast('Stopp kran/AHC først', true); return; }
-  if (!confirm('Nullstille IMCA-tellerne for ' + CRANES[root.active].short + '-kranen (krantid og AHC-tid) til 00:00?\n\nTips: last ned backup først.')) return;
-  if (!confirm('Er du helt sikker? Dette kan ikke angres.')) return;
+  if (L().craneOpen || L().ahcOpen) { toast(T('Stopp kran/AHC først'), true); return; }
+  if (!confirm(T('Nullstille IMCA-tellerne for ') + CRANES[root.active].short + T('-kranen (krantid og AHC-tid) til 00:00?\n\nTips: last ned backup først.'))) return;
+  if (!confirm(T('Er du helt sikker? Dette kan ikke angres.'))) return;
   state.imca = { craneMs: 0, ahcMs: 0 }; state.tripStart = Date.now(); state.undo = null;
-  if (state.history.length && confirm('Slette historikken også (' + state.history.length + ' løft)?')) state.history = [];
-  save(); render(); toast('Turen er nullstilt');
+  if (state.history.length && confirm(T('Slette historikken også (') + state.history.length + T(' løft)?'))) state.history = [];
+  save(); render(); toast(T('Turen er nullstilt'));
 }
 
 /* ================= VISNING ================= */
@@ -537,13 +757,14 @@ function fillInputs() { document.getElementById('opName').value = L().name || ''
 
 function render() {
   const now = Date.now(), l = L(), cr = CRANES[root.active];
-  set('craneTitle', cr.title); set('imcaTitle', 'IMCA Kranloggbok ' + cr.short + ' – hele turen');
+  document.getElementById('wholeMeters').checked = !!(root.settings && root.settings.wholeMeters);
+  set('craneTitle', cr.title); set('imcaTitle', T('IMCA Kranloggbok ') + cr.short + T(' – hele turen'));
   document.title = cr.short + ' – Subsea Kranlogg';
   const running = k => !!root.cranes[k].lift.craneOpen, dot = '<span class="dot" title="Kran går"></span>';
   for (const c of ['350', '50']) {
     const btn = document.getElementById('tab' + c);
     btn.className = c === cr.crane ? 'on' : '';
-    btn.innerHTML = (c === '350' ? '350t AHC-kran' : '50t-kran') + (running(c + '-MW') || running(c + '-AW') ? dot : '');
+    btn.innerHTML = T(c === '350' ? '350t AHC-kran' : '50t-kran') + (running(c + '-MW') || running(c + '-AW') ? dot : '');
   }
   for (const wn of ['MW', 'AW']) {
     const btn = document.getElementById('tab' + wn);
@@ -557,7 +778,7 @@ function render() {
   const ia = state.imca.ahcMs + (l.ahcOpen ? now - l.ahcOpen : 0);
   set('imcaCrane', hhmm(ic)); set('imcaCraneDec', decH(ic) + ' hours');
   set('imcaAhc', hhmm(ia)); set('imcaAhcDec', decH(ia) + ' hours');
-  set('tripInfo', 'Tur startet ' + date(state.tripStart) + ' · ' + state.history.length + ' løft i historikk');
+  set('tripInfo', T('Tur startet ') + date(state.tripStart) + ' · ' + state.history.length + T(' løft i historikk'));
 
   set('liveStart', l.start ? clock(l.start) : '--:--');
   set('liveCrane', hhmmss(liftCraneMs(now)));
@@ -565,11 +786,11 @@ function render() {
   const s = summarize(l.readings);
   set('liveHook', s.maxHook != null ? fmtNum(s.maxHook) + ' t' : '–');
   set('liveDepth', s.maxDepth != null ? fmtNum(s.maxDepth) + ' m' : '–');
-  set('liveHc', s.hcMin != null ? fmtNum(s.hcMin) + '–' + fmtNum(s.hcMax) : '–');
+  const hr = s.hcRanges; set('liveHc', hr.length ? fmtWire(hr[hr.length - 1][0]) + '–' + fmtWire(hr[hr.length - 1][1]) + (hr.length > 1 ? ' (' + hr.length + ')' : '') : '–');
 
   const cb = document.getElementById('craneBadge'), ab = document.getElementById('ahcBadge');
-  cb.textContent = l.craneOpen ? 'KRAN PÅ' : 'KRAN AV'; cb.className = 'pill ' + (l.craneOpen ? 'pill-on' : 'pill-off');
-  ab.textContent = l.ahcOpen ? 'AHC PÅ' : 'AHC AV'; ab.className = 'pill ' + (l.ahcOpen ? 'pill-ahc' : 'pill-off');
+  cb.textContent = T(l.craneOpen ? 'KRAN PÅ' : 'KRAN AV'); cb.className = 'pill ' + (l.craneOpen ? 'pill-on' : 'pill-off');
+  ab.textContent = T(l.ahcOpen ? 'AHC PÅ' : 'AHC AV'); ab.className = 'pill ' + (l.ahcOpen ? 'pill-ahc' : 'pill-off');
   document.getElementById('btnCraneStart').disabled = !!l.craneOpen;
   document.getElementById('btnCraneStop').disabled = !l.craneOpen;
   document.getElementById('btnAhcStart').disabled = !!l.ahcOpen;
@@ -582,7 +803,8 @@ function render() {
     '<div class="reading"><span>' + clock(r.t) + ' &nbsp;' +
     (r.hook != null ? '<b>' + fmtNum(r.hook) + ' t</b> ' : '') +
     (r.depth != null ? '<b>' + fmtNum(r.depth) + ' m</b> ' : '') +
-    (r.ahc ? '<span class="tag tag-ahc">AHC</span> ' : '') +
+    (r.hookPos != null ? 'pos ' + fmtNum(r.hookPos) + ' m ' : '') +
+    (r.ahc ? '<span class="tag tag-ahc">AHC' + (r.ahc === true ? '' : ' ' + r.ahc) + '</span> ' : '') +
     '<span class="tag ' + (r.src === 'ocr' ? 'tag-ocr">FOTO' : 'tag-man">MAN') + '</span></span>' +
     '<button class="x" onclick="delReading(' + i + ')">✕</button></div>').join('');
 
@@ -598,15 +820,15 @@ function renderReportOnly(skipReset) {
 function renderHistory(skipBankReset) {
   const el = document.getElementById('history');
   set('histCount', String(state.history.length));
-  if (!state.history.length) { el.innerHTML = '<div class="empty">Ingen lagrede løft.</div>'; return; }
+  if (!state.history.length) { el.innerHTML = '<div class="empty">' + T('Ingen lagrede løft.') + '</div>'; return; }
   el.innerHTML = state.history.map((h, n) => {
     const nr = state.history.length - n;
-    const when = h.start ? date(h.start) + ' · ' + clock(h.start) + ' – ' + (h.end ? clock(h.end) : '?') : 'Tidspunkt ikke registrert';
+    const when = h.start ? date(h.start) + ' · ' + clock(h.start) + ' – ' + (h.end ? clock(h.end) : '?') : T('Tidspunkt ikke registrert');
     return '<div class="hist"><h4><span>' + nr + '. ' + esc(h.name) + '</span>' +
-      '<button class="btn-outline btn-small" onclick="delHistory(' + h.id + ')">Slett</button></h4>' +
+      '<button class="btn-outline btn-small" onclick="delHistory(' + h.id + ')">' + T('Slett') + '</button></h4>' +
       '<div class="meta">' + esc(when) + '<br>Krantid ' + hm(h.craneMs) + ' (' + decH(h.craneMs) + ' h) · AHC ' + Math.round(h.ahcMs / MIN) + ' min (' + decH(h.ahcMs) + ' h)</div>' +
       reportHtml(h) +
-      '<button class="btn-outline" onclick="copyHistory(' + h.id + ')">📋 Kopier rapport</button></div>';
+      '<button class="btn-outline" onclick="copyHistory(' + h.id + ')">📋 ' + T('Kopier rapport') + '</button></div>';
   }).join('');
 }
 function set(id, txt) { const e = document.getElementById(id); if (e.textContent !== txt) e.textContent = txt; }
@@ -633,14 +855,14 @@ function loadTesseract() {
     const s = document.createElement('script');
     s.src = 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
     s.onload = res;
-    s.onerror = () => { tesseractLoading = null; rej(new Error('Kunne ikke laste OCR. Trenger nett første gang – bruk manuell inntasting.')); };
+    s.onerror = () => { tesseractLoading = null; rej(new Error(T('Kunne ikke laste OCR. Trenger nett første gang – bruk manuell inntasting.'))); };
     document.head.appendChild(s);
   });
   return tesseractLoading;
 }
 const withTimeout = (p, ms, msg) => Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error(msg)), ms))]);
 async function getWorker() {
-  await withTimeout(loadTesseract(), 60000, 'Tidsavbrudd ved lasting av OCR (dårlig nett?)');
+  await withTimeout(loadTesseract(), 60000, T('Tidsavbrudd ved lasting av OCR (dårlig nett?)'));
   if (worker) return worker;
   const isWeb = /^https?:$/.test(location.protocol);
   let lastErr = null;
@@ -651,11 +873,11 @@ async function getWorker() {
         cacheMethod,
         logger: m => { if (ocrProgress) ocrProgress(m); },
         errorHandler: e => { lastErr = e; }
-      }), 180000, 'Tidsavbrudd ved nedlasting av OCR-språkfil (dårlig nett?)');
+      }), 180000, T('Tidsavbrudd ved nedlasting av OCR-språkfil (dårlig nett?)'));
       return worker;
     } catch (e) { lastErr = e; worker = null; }
   }
-  throw new Error('OCR kunne ikke starte: ' + errText(lastErr));
+  throw new Error(T('OCR kunne ikke starte: ') + errText(lastErr));
 }
 function errText(e) { return e ? (e.message || (typeof e === 'string' ? e : JSON.stringify(e))) : 'ukjent feil'; }
 const OCR_STEPS = { 'loading tesseract core': 'Laster OCR-motor', 'initializing tesseract': 'Starter OCR', 'initialized tesseract': 'OCR startet',
@@ -711,14 +933,15 @@ function loadGray(file, crop) {
       const c = document.createElement('canvas'); c.width = W; c.height = H;
       const ctx = c.getContext('2d'); ctx.imageSmoothingQuality = 'high'; ctx.drawImage(img, sc.x, sc.y, sc.w, sc.h, 0, 0, W, H);
       const d = ctx.getImageData(0, 0, W, H), p = d.data, gray = new Uint8ClampedArray(W * H);
+      const rgb = new Uint8ClampedArray(p); // fargene tas vare på for sjekk av MW/AW-knappen
       for (let i = 0, j = 0; j < gray.length; i += 4, j++) {
         const g = 0.299 * p[i] + 0.587 * p[i + 1] + 0.114 * p[i + 2];
         gray[j] = g; p[i] = p[i + 1] = p[i + 2] = g;
       }
       ctx.putImageData(d, 0, 0);
-      res({ W, H, gray, grayCanvas: c, url });
+      res({ W, H, gray, rgb, grayCanvas: c, url });
     };
-    img.onerror = () => { URL.revokeObjectURL(url); rej(new Error('Kunne ikke lese bildet')); };
+    img.onerror = () => { URL.revokeObjectURL(url); rej(new Error(T('Kunne ikke lese bildet'))); };
     img.src = url;
   });
 }
@@ -774,7 +997,25 @@ function cropCanvas(src, rect, opt) {
   } else for (let j = 0; j < g.length; j++) bin[j] = g[j] < th ? 0 : 255;
   // fjern rammelinjer (rader/kolonner som er mer enn halvt svarte)
   for (let y = 0; y < h; y++) { let n = 0; for (let x = 0; x < w; x++) if (!bin[y * w + x]) n++; if (n > w * 0.5) for (let x = 0; x < w; x++) bin[y * w + x] = 255; }
-  for (let x = 0; x < w; x++) { let n = 0; for (let y = 0; y < h; y++) if (!bin[y * w + x]) n++; if (n > h * 0.5) for (let y = 0; y < h; y++) bin[y * w + x] = 255; }
+  // loddrette rammelinjer: bare ytterst i utsnittet (ellers kan sifferet «1» bli fjernet)
+  for (let x = 0; x < w; x++) {
+    if (x > w * 0.12 && x < w * 0.88) continue;
+    let n = 0; for (let y = 0; y < h; y++) if (!bin[y * w + x]) n++;
+    if (n > h * 0.6) for (let y = 0; y < h; y++) bin[y * w + x] = 255;
+  }
+  if (!opt.keepEdges) { // fjern alt svart som henger sammen med kanten av utsnittet (rammer/nabobokser), sifrene står fritt
+    const stack = [];
+    for (let x = 0; x < w; x++) { stack.push(x, (h - 1) * w + x); }
+    for (let y = 0; y < h; y++) { stack.push(y * w, y * w + w - 1); }
+    while (stack.length) {
+      const q = stack.pop();
+      if (bin[q]) continue;
+      bin[q] = 255;
+      const x = q % w;
+      if (x > 0) stack.push(q - 1); if (x < w - 1) stack.push(q + 1);
+      if (q >= w) stack.push(q - w); if (q < w * (h - 1)) stack.push(q + w);
+    }
+  }
   if (opt.dilate) { // gjør tynn tekst tykkere (3x3)
     const d = new Uint8Array(bin);
     for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) {
@@ -796,7 +1037,9 @@ async function readCrop(w, src, rect, digits, whitelist, opt) {
 }
 // Tall fra en verdiboks. Skjermen viser alltid én desimal – mangler punktumet, settes det inn.
 function parseBoxNumber(txt, min, max) {
-  const m = String(txt).match(/-?\d+(?:[.,]\d)?/); // maks én desimal (som på skjermen)
+  // Verdien står høyrejustert foran enheten -> bruk det SISTE tallet (en rest av en ramme kan bli lest som «1» foran)
+  const all = String(txt).match(/-?\d+(?:[.,]\d)?/g); // maks én desimal (som på skjermen)
+  const m = all ? [all[all.length - 1]] : null;
   if (!m) return null;
   let s = m[0].replace(',', '.');
   let v = parseFloat(s);
@@ -804,6 +1047,26 @@ function parseBoxNumber(txt, min, max) {
   return (isNaN(v) || v < min || v > max) ? null : Math.round(v * 100) / 100;
 }
 
+// Les en verdiboks flere ganger med ulik bildebehandling og velg svaret som går igjen.
+// Skjermen viser alltid én desimal, så svar med desimaltegn foretrekkes (et tapt «0.» gir ellers 4 i stedet for 0.4).
+async function readValue(w, src, rect, min, max) {
+  const variants = [{}, { scale: 4, blur: 1 }, { scale: 4, adapt: 8, blur: 2 }, { scale: 3, dilate: true }, { scale: 5, blur: 2 }];
+  const got = [], raws = [];
+  for (const v of variants) {
+    const txt = await readCrop(w, src, rect, true, null, v);
+    raws.push(txt);
+    const val = parseBoxNumber(txt, min, max);
+    if (val == null) continue;
+    const dec = /\d[.,]\d/.test(txt);
+    got.push({ val, dec });
+    const same = got.filter(g => g.dec && g.val === val).length;
+    if (dec && same >= 3) break; // tre like svar med desimal -> godt nok
+  }
+  const pool = got.some(g => g.dec) ? got.filter(g => g.dec) : got;
+  const count = new Map(); pool.forEach(g => count.set(g.val, (count.get(g.val) || 0) + 1));
+  let best = null, bn = 0; for (const [v, n] of count) if (n > bn) { best = v; bn = n; }
+  return { val: best, raw: raws.join(' | ') };
+}
 const cy = b => (b.y0 + b.y1) / 2;
 const sameRow = (a, b) => Math.abs(cy(a) - cy(b)) < Math.max(a.y1 - a.y0, b.y1 - b.y0) * 0.8;
 // Finn en etikett som består av flere ord etter hverandre på samme rad
@@ -823,13 +1086,16 @@ function findLabel(words, res, reject) {
     if (!ok) continue;
     const b = { x0: Math.min(...parts.map(p => p.x0)), y0: Math.min(...parts.map(p => p.y0)),
                 x1: Math.max(...parts.map(p => p.x1)), y1: Math.max(...parts.map(p => p.y1)) };
+    // Robust høyde/midtlinje: et ord kan få for høy boks når OCR slår det sammen med noe over/under
+    const sh = parts.slice().sort((p, q) => (p.y1 - p.y0) - (q.y1 - q.y0))[0];
+    b.h = sh.y1 - sh.y0; b.cy = (sh.y0 + sh.y1) / 2;
     if (reject && reject(b, i)) continue;
     return b;
   }
   return null;
 }
 function valueRect(lb) { // verdiboksen står til høyre for etiketten
-  const w = lb.x1 - lb.x0, h = lb.y1 - lb.y0, c = cy(lb);
+  const h = lb.h || (lb.y1 - lb.y0), c = lb.cy ?? cy(lb), w = Math.min(lb.x1 - lb.x0, h * 7.5);
   return { x0: lb.x1 + 0.3 * w, x1: lb.x1 + 1.55 * w, y0: c - 0.95 * h, y1: c + 0.95 * h };
 }
 const RE_TIME = /^([01]?\d|2[0-3])[:.]([0-5]\d)(?:[:.]([0-5]\d))?$/;
@@ -852,24 +1118,50 @@ function findClock(words, H, text) {
   return { str: timeStr, t: timeToTs(timeStr) };
 }
 // Statusboksen: «NORMAL - MODE» = AHC av. Alt annet med MODE («AHC (Empty hook) - MODE», CT ...) = AHC/HC på.
+function greennessRect(img, x0, y0, x1, y1) { // gjennomsnittlig «grønnhet» i et område (mørk tekst hoppes over)
+  x0 = Math.max(0, Math.round(x0)); x1 = Math.min(img.W - 1, Math.round(x1));
+  y0 = Math.max(0, Math.round(y0)); y1 = Math.min(img.H - 1, Math.round(y1));
+  let R = 0, G = 0, B = 0, n = 0;
+  for (let y = y0; y <= y1; y += 2) for (let x = x0; x <= x1; x += 2) {
+    const i = (y * img.W + x) * 4, r = img.rgb[i], g = img.rgb[i + 1], bl = img.rgb[i + 2];
+    if (0.299 * r + 0.587 * g + 0.114 * bl < 90) continue;
+    R += r; G += g; B += bl; n++;
+  }
+  return n ? (G - (R + B) / 2) / n : 0;
+}
+// MW- og AW-knappen står side om side oppe til høyre (MW ca. 9,7 teksthøyder til venstre for AW).
+// Teksten på den grønne/turkise knappen leses ofte ikke, så vi finner den ene og måler fargen på begge.
+function detectWinch(words, img) {
+  const T2 = w => w.text.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+  const top = words.filter(w => cy(w.bbox) < img.H * 0.45 && w.bbox.x0 > img.W * 0.55);
+  const aw = top.find(w => T2(w) === 'AW'), mw = top.find(w => T2(w) === 'MW');
+  const ref = aw || mw; if (!ref) return null;
+  const b = ref.bbox, h = b.y1 - b.y0, c = (b.x0 + b.x1) / 2, yc = cy(b);
+  const awX = aw ? c : c + 9.7 * h, mwX = aw ? c - 9.7 * h : c;
+  const box = x => greennessRect(img, x - 2.4 * h, yc - 1.0 * h, x + 2.4 * h, yc + 1.0 * h);
+  const gm = box(mwX), ga = box(awX);
+  if (gm > 30 && gm - ga > 20) return 'MW';
+  if (ga > 30 && ga - gm > 20) return 'AW';
+  return null;
+}
 function statusFromText(s) {
   const up = s.toUpperCase();
   if (/N[O0]RMA/.test(up)) return 'NORMAL';
-  if (/AHC|\bA?HC\b|\bCT\b|EMPTY|H[O0]{2}K|M[O0]DE/.test(up)) return 'AHC';
+  if (/AHC|\bA?HC\b|\bCT\b|EMPTY/.test(up)) return 'AHC'; // «MODE» alene er ikke nok
   return null;
 }
 
 async function readNovScreen(file, show, crop) {
   const img = await loadGray(file, crop);
-  if (!window.Tesseract && !navigator.onLine) throw new Error('Ingen nettforbindelse. OCR må lastes fra nett første gang – skriv inn verdiene manuelt.');
-  show('Laster OCR...', img.url);
-  ocrProgress = m => show((OCR_STEPS[m.status] || m.status) + '... ' + Math.round((m.progress || 0) * 100) + ' %', img.url);
+  if (!window.Tesseract && !navigator.onLine) throw new Error(T('Ingen nettforbindelse. OCR må lastes fra nett første gang – skriv inn verdiene manuelt.'));
+  show(T('Laster OCR...'), img.url);
+  ocrProgress = m => show(T(OCR_STEPS[m.status] || m.status) + '... ' + Math.round((m.progress || 0) * 100) + ' %', img.url);
   const w = await getWorker();
   await w.setParameters({ tessedit_pageseg_mode: '11', tessedit_char_whitelist: '' });
   const bin = adaptiveCanvas(img.gray, img.W, img.H);
   const { data } = await w.recognize(bin);
   ocrProgress = null;
-  show('Leser verdier...', img.url);
+  show(T('Leser verdier...'), img.url);
   const words = (data.words || []).filter(x => x.text && x.text.trim());
   const text = data.text || '';
   const out = { text, raw: {} };
@@ -880,9 +1172,18 @@ async function readNovScreen(file, show, crop) {
     return prev && /ABLE|ALLOW|^AL/i.test(prev.text) && sameRow(prev.bbox, b) && b.x0 - prev.bbox.x1 < (b.y1 - b.y0) * 2;
   });
   out.labelH = hookLb ? hookLb.y1 - hookLb.y0 : 0; // teksthøyde – liten = bildet tatt på avstand
-  if (hookLb) { out.raw.hook = await readCrop(w, img.grayCanvas, valueRect(hookLb), true); out.hook = parseBoxNumber(out.raw.hook, 0, 400); }
-  const wireLb = findLabel(words, [/^W[I1L|]RE$/i, /^PA[I1L|]D$/i, /^[O0]UT$/i]);
-  if (wireLb) { out.raw.depth = await readCrop(w, img.grayCanvas, valueRect(wireLb), true); out.depth = parseBoxNumber(out.raw.depth, 0, 5000); }
+  if (hookLb) { const v = await readValue(w, img.grayCanvas, valueRect(hookLb), 0, 400); out.hook = v.val; out.raw.hook = v.raw; }
+  // Wire paid out – men ikke «Min Wire paid out»
+  const wireLb = findLabel(words, [/^W[I1L|]RE$/i, /^PA[I1L|]D$/i, /^[O0]UT$/i], (b, i) => {
+    const prev = words[i - 1];
+    return prev && /^M[I1L]N$/i.test(prev.text.replace(/[^A-Za-z0-9]/g, '')) && sameRow(prev.bbox, b) && b.x0 - prev.bbox.x1 < (b.y1 - b.y0) * 2;
+  });
+  if (wireLb) { const v = await readValue(w, img.grayCanvas, valueRect(wireLb), 0, 5000); out.depth = v.val; out.raw.depth = v.raw; }
+  // Bonus: «Hook pos» (vises bare i AHC/ACT-menyen)
+  const hposLb = findLabel(words, [/^H[O0Q]{2}K$/i, /^P[O0]S/i]);
+  if (hposLb) { const v = await readValue(w, img.grayCanvas, valueRect(hposLb), -100, 100); out.hookPos = v.val; out.raw.hookPos = v.raw; }
+  // C. Aktiv vinsj: MW- eller AW-knappen oppe til høyre har grønn/turkis bakgrunn
+  out.winch = detectWinch(words, img);
 
   // Statusboksen direkte: ordet «MODE» lengst ned (det øverst er «HPU NORMAL MODE»)
   const modes = words.filter(x => /^M[O0]DE$/.test(x.text.replace(/[^A-Za-z0-9]/g, '')) && cy(x.bbox) > img.H * 0.12)
@@ -891,7 +1192,7 @@ async function readNovScreen(file, show, crop) {
     const m = modes[0].bbox, h = m.y1 - m.y0;
     out.raw.status = await readCrop(w, img.grayCanvas, { x0: m.x1 - 17 * h, x1: m.x1 + 0.6 * h, y0: cy(m) - 1.0 * h, y1: cy(m) + 1.0 * h }, false);
     out.status = statusFromText(out.raw.status);
-    if (out.status === 'AHC' && !/AHC|HC|CT|EMPTY|H[O0]{2}K/i.test(out.raw.status)) out.status = null; // bare «MODE» lest -> usikkert
+
   }
 
   // Status- og klokkeboks finnes ut fra den faste toppdelen som er lik på alle NOV-sidene
@@ -969,58 +1270,69 @@ async function handleImage(ev) {
   if (!file) return;
   const box = document.getElementById('ocrBox'); box.style.display = 'block';
   const show = (html, url) => { box.innerHTML = (url ? '<img src="' + url + '" alt="">' : '') + html; };
-  show('Bilde mottatt (' + Math.round(file.size / 1024) + ' kB) – behandler...');
+  show(T('Bilde mottatt (') + Math.round(file.size / 1024) + T(' kB) – behandler...'));
   box.scrollIntoView({ behavior: 'smooth', block: 'center' });
   try {
     let r = await readNovScreen(file, show, false);
     const score = x => (x.hook != null) + (x.depth != null) + (x.status != null) + (x.clock != null);
     if (r.hook == null || r.depth == null || r.status == null || r.labelH < 30) {
       // Bildet er trolig tatt på avstand: prøv igjen med bare skjermen klippet ut og forstørret
-      show('Prøver igjen med skjermen forstørret...', r.url);
+      show(T('Prøver igjen med skjermen forstørret...'), r.url);
       try { const r2 = await readNovScreen(file, show, true); if (score(r2) > score(r) || (r.labelH < 30 && score(r2) >= score(r))) r = r2; } catch (e) {}
     }
     let t = r.clock && r.clock.t != null ? r.clock.t : null;
     const usedScreenTime = t != null && Math.abs(Date.now() - t) < 30 * MIN;
     if (!usedScreenTime) t = Date.now();
 
-    state.undo = snapshot();
     const msgs = [];
-    const wasAhc = !!L().ahcOpen;
+    if (r.winch && r.winch !== CRANES[root.active].winch) {
+      const k = CRANES[root.active].crane + '-' + r.winch;
+      save(); root.active = k; state = root.cranes[k]; fillInputs();
+      msgs.push('<span class="ok">' + T('Vinsj valgt automatisk') + ': ' + (r.winch === 'MW' ? 'Main winch (MW)' : 'Aux winch (AW)') + '</span>');
+    } else if (r.winch) msgs.push(T('Vinsj') + ': ' + (r.winch === 'MW' ? 'Main winch (MW)' : 'Aux winch (AW)'));
+    const maxT = CRANE_MAX[CRANES[root.active].crane];
+    let hookWarn = null;
+    if (r.hook != null && r.hook > maxT) { hookWarn = r.hook; r.hook = null; }
+    state.undo = snapshot();
+    const wasAhc = !!L().ahcOpen, sessBefore = L().ahcSess || 1;
     if (r.status === 'AHC') {
       const s = doAhcStart(t);
-      if (s.started) msgs.push('<span class="ok">⚡ AHC PÅ – AHC-økt startet ' + clock(t) + (s.autoCrane ? ' (kran startet også)' : '') + '</span>');
-      else msgs.push('⚡ AHC PÅ (økt pågår allerede)');
+      if (s.started) msgs.push('<span class="ok">⚡ ' + T('AHC PÅ – AHC-økt startet') + ' ' + clock(t) + (s.autoCrane ? T(' (kran startet også)') : '') + '</span>');
+      else msgs.push('⚡ ' + T('AHC PÅ (økt pågår allerede)'));
     } else if (r.status === 'NORMAL') {
       if (wasAhc) {
         if (t < L().ahcOpen) t = Date.now();
-        doAhcStop(t); msgs.push('<span class="ok">■ NORMAL - MODE – AHC-økt avsluttet og lagret ' + clock(t) + '</span>');
-      } else msgs.push('NORMAL - MODE (AHC var ikke aktiv)');
-    } else msgs.push('<span class="warn">Fant ikke AHC/NORMAL-status – ingen endring</span>');
+        doAhcStop(t); msgs.push('<span class="ok">■ NORMAL - MODE – ' + T('AHC-økt avsluttet og lagret') + ' ' + clock(t) + '</span>');
+      } else msgs.push('NORMAL - MODE (' + T('AHC var ikke aktiv') + ')');
+    } else msgs.push('<span class="warn">' + T('Fant ikke AHC/NORMAL-status – ingen endring') + '</span>');
 
     if (r.hook != null || r.depth != null) {
       // Avlesningen teller i HC/CT-dybden hvis AHC var aktiv før eller etter bildet
-      addReading({ t, hook: r.hook ?? null, depth: r.depth ?? null, ahc: wasAhc || !!L().ahcOpen, src: 'ocr' });
+      addReading({ t, hook: r.hook ?? null, depth: r.depth ?? null, hookPos: r.hookPos ?? null,
+        ahc: wasAhc ? sessBefore : (L().ahcOpen ? L().ahcSess : 0), src: 'ocr' });
     }
-    msgs.push(r.clock ? 'Klokke: <b>' + esc(r.clock.str) + '</b>' + (usedScreenTime ? '' : ' <span class="warn">(urimelig – brukte telefonens tid)</span>') : '<span class="warn">Fant ikke klokkeslett – brukte telefonens tid</span>');
-    msgs.push(r.hook != null ? 'Hook Load: <b>' + fmtNum(r.hook) + ' t</b>' : '<span class="warn">Fant ikke «Hook Load»</span>');
-    msgs.push(r.depth != null ? 'Wire Paid Out: <b>' + fmtNum(r.depth) + ' m</b>' : '<span class="warn">Fant ikke «Wire Paid Out»</span>');
-    msgs.push('<span style="color:var(--muted)">Kontroller verdiene. Feil? Trykk «Angre» og skriv inn manuelt.</span>');
+    msgs.push(r.clock ? T('Klokke') + ': <b>' + esc(r.clock.str) + '</b>' + (usedScreenTime ? '' : ' <span class="warn">(' + T('urimelig – brukte telefonens tid') + ')</span>') : '<span class="warn">' + T('Fant ikke klokkeslett – brukte telefonens tid') + '</span>');
+    if (hookWarn != null) msgs.push('<span class="err">⚠ Hook Load ' + hookWarn + ' t ' + T('er over kranens maks') + ' (' + maxT + ' t) – ' + T('trolig desimalfeil. Ikke lagret – skriv inn manuelt.') + '</span>');
+    else msgs.push(r.hook != null ? 'Hook Load: <b>' + fmtNum(r.hook) + ' t</b>' : '<span class="warn">' + T('Fant ikke «Hook Load»') + '</span>');
+    msgs.push(r.depth != null ? 'Wire Paid Out: <b>' + fmtNum(r.depth) + ' m</b>' : '<span class="warn">' + T('Fant ikke «Wire Paid Out»') + '</span>');
+    if (r.hookPos != null) msgs.push('Hook pos: <b>' + fmtNum(r.hookPos) + ' m</b>');
+    msgs.push('<span style="color:var(--muted)">' + T('Kontroller verdiene. Feil? Trykk «Angre» og skriv inn manuelt.') + '</span>');
     const rawInfo = (r.raw.clockBox ? 'Klokke-boks: ' + r.raw.clockBox + '\n' : '') + (r.raw.clock ? 'Klokke-søk: ' + r.raw.clock.replace(/\n+/g, ' ') + '\n' : '') + 'Status-boks: ' + (r.raw.status ?? '–') + '\nHook Load-boks: ' + (r.raw.hook ?? '–') + '\nWire Paid Out-boks: ' + (r.raw.depth ?? '–') + '\n\n' + r.text.trim();
-    show(msgs.join('<br>') + '<details style="margin-top:8px"><summary>Vis OCR-tekst</summary><div class="ocr-raw">' + esc(rawInfo) + '</div></details>', r.url);
+    show(msgs.join('<br>') + '<details style="margin-top:8px"><summary>' + T('Vis OCR-tekst') + '</summary><div class="ocr-raw">' + esc(rawInfo) + '</div></details>', r.url);
     save(); render(); vibrate();
   } catch (e) {
     ocrProgress = null;
-    show('<span class="err">⚠ ' + esc(errText(e)) + '</span><br><span style="color:var(--muted)">Skriv inn verdiene manuelt, og send meg gjerne denne feilmeldingen.</span>');
+    show(T('<span class="err">⚠ ') + esc(errText(e)) + '</span><br><span style="color:var(--muted)">' + T('Skriv inn verdiene manuelt.') + '</span>');
   }
 }
 
 /* ================= KOPIER / DEL / BACKUP ================= */
 async function copyText(txt) {
-  try { await navigator.clipboard.writeText(txt); toast('Kopiert: ' + (txt.length > 30 ? 'rapport' : txt)); }
+  try { await navigator.clipboard.writeText(txt); toast(T('Kopiert: ') + (txt.length > 30 ? T('rapport') : txt)); }
   catch (e) {
     const ta = document.createElement('textarea'); ta.value = txt; ta.style.position = 'fixed'; ta.style.opacity = '0';
     document.body.appendChild(ta); ta.select();
-    try { document.execCommand('copy'); toast('Kopiert'); } catch (e2) { toast('Kopiering feilet', true); }
+    try { document.execCommand('copy'); toast(T('Kopiert')); } catch (e2) { toast(T('Kopiering feilet'), true); }
     ta.remove();
   }
 }
@@ -1043,17 +1355,108 @@ function importJson(ev) {
     try {
       const s = JSON.parse(r.result);
       if (s && s.v === 2 && s.cranes) { // backup av begge kranene
-        if (!confirm('Gjenopprette backup for begge kranene?\nNåværende data på denne telefonen erstattes.')) return;
+        if (!confirm(T('Gjenopprette backup for begge kranene?\nNåværende data på denne telefonen erstattes.'))) return;
         localStorage.setItem(KEY, JSON.stringify(s)); root = loadRoot(); state = root.cranes[root.active];
       } else if (isCraneState(s)) { // gammel backup (én kran) -> legges inn på valgt kran
-        if (!confirm('Gjenopprette backup til ' + CRANES[root.active].short + '-kranen? (' + s.history.length + ' løft, IMCA ' + hhmm(s.imca.craneMs) + ')\nDataene for denne kranen erstattes.')) return;
+        if (!confirm(T('Gjenopprette backup til ') + CRANES[root.active].short + ' (' + s.history.length + T(' løft') + ', IMCA ' + hhmm(s.imca.craneMs) + ')?\n' + T('Dataene for denne kranen/vinsjen erstattes.'))) return;
         state = s;
       } else throw new Error();
-      save(); fillInputs(); render(); toast('Backup gjenopprettet');
-    } catch (e) { toast('Ugyldig backupfil', true); }
+      save(); fillInputs(); render(); toast(T('Backup gjenopprettet'));
+    } catch (e) { toast(T('Ugyldig backupfil'), true); }
   };
   r.readAsText(file);
 }
+
+/* ================= SPRÅK / LANGUAGE ================= */
+const EN = {
+  'Subsea Kranlogg': 'Subsea Crane Log', '350t AHC-kran': '350t AHC crane', '50t-kran': '50t crane',
+  'KUN MANUELL NULLSTILLING': 'MANUAL RESET ONLY', 'SAMLET KRANTID (TT:MM)': 'TOTAL CRANE TIME (HH:MM)', 'SAMLET AHC-TID (TT:MM)': 'TOTAL AHC TIME (HH:MM)',
+  'IMCA Kranloggbok ': 'IMCA Crane Logbook ', ' – hele turen': ' – whole trip', 'Tur startet ': 'Trip started ', ' løft i historikk': ' lifts in history',
+  'Nullstill tur (kun etter endt tur)': 'Reset trip (only after trip has ended)', 'Aktivt løft': 'Active lift',
+  'KRAN AV': 'CRANE OFF', 'KRAN PÅ': 'CRANE ON', 'AHC AV': 'AHC OFF', 'AHC PÅ': 'AHC ON',
+  'Operasjon (f.eks. ROV basket IT, Subsea module)': 'Operation (e.g. ROV basket IT, Subsea module)',
+  'Comments (f.eks. MB RB, RT, TB)': 'Comments (e.g. MB RB, RT, TB)',
+  'STARTTID': 'START TIME', 'KRANTID': 'CRANE TIME', 'AHC-TID': 'AHC TIME', 'MAX HOOK LOAD': 'MAX HOOK LOAD', 'MAX DYBDE': 'MAX DEPTH', 'HC/CT DYBDE': 'HC/CT DEPTH',
+  '▶ Kran START': '▶ Crane START', '■ Kran STOPP': '■ Crane STOP', '⚡ AHC START': '⚡ AHC START', 'AHC STOPP': 'AHC STOP',
+  'Klokkeslett for neste START/STOPP (tomt = nå)': 'Time for next START/STOP (empty = now)',
+  '📷 Ta bilde av NOV-skjerm': '📷 Photograph NOV screen', '🖼 Velg bilde fra galleriet': '🖼 Choose photo from gallery',
+  'Åpner ikke kameraet? Ta bildet med telefonens vanlige kamera, og velg det fra galleriet.': "Camera won't open? Take the photo with the phone's normal camera and choose it from the gallery.",
+  '↶ Angre siste avlesning': '↶ Undo last reading', 'Manuell avlesning': 'Manual reading', '＋ Registrer avlesning': '＋ Add reading',
+  'Avlesninger tatt mens AHC er PÅ teller i «Wire paid out during HC/CT».': 'Readings taken while AHC is ON count towards "Wire paid out during HC/CT" (per AHC session).',
+  'Rapport – New Operation Log Entry': 'Report – New Operation Log Entry',
+  'Hele meter på wire i rapporten (av = én desimal, f.eks. 1787.6 m)': 'Whole metres for wire in the report (off = one decimal, e.g. 1787.6 m)',
+  '📋 Kopier alt': '📋 Copy all', '↗ Del': '↗ Share', '💾 Lagre løft i historikk & start nytt': '💾 Save lift to history & start new',
+  'Historikk – ferdige løft': 'History – completed lifts', 'BACKUP OG GJENOPPRETTING': 'BACKUP AND RESTORE',
+  'Last ned backup': 'Download backup', 'Gjenopprett': 'Restore', 'Ført på feil kran/vinsj? Bytt dataene med:': 'Logged on the wrong crane/winch? Swap data with:', '⇄ Bytt': '⇄ Swap',
+  'Alt lagres kun i nettleseren på denne telefonen. Ta backup før nullstilling, telefonbytte eller tømming av nettleserdata.': 'Everything is stored only in the browser on this phone. Back up before resetting, changing phone or clearing browser data.',
+  'Skriv inn operasjon...': 'Enter operation...', 'Initialer / kommentar...': 'Initials / comment...', 'f.eks. 1,7': 'e.g. 1.7', 'f.eks. 1795': 'e.g. 1795',
+  'Ingen lagrede løft.': 'No saved lifts.', 'Tidspunkt ikke registrert': 'Time not recorded', 'Slett': 'Delete', 'Kopier rapport': 'Copy report', 'Kopier': 'Copy',
+  'Kopiert: ': 'Copied: ', 'Kopiert': 'Copied', 'rapport': 'report', 'Kopiering feilet': 'Copy failed',
+  'Kran startet': 'Crane started', 'Kran stoppet – tiden er lagt til IMCA': 'Crane stopped – time added to IMCA', 'AHC startet': 'AHC started', 'AHC stoppet': 'AHC stopped',
+  'AHC startet (kran startet også)': 'AHC started (crane started too)', 'Byttet til ': 'Switched to ', 'Dataene er byttet': 'Data swapped',
+  'Bytte all data (IMCA, aktivt løft og historikk) mellom ': 'Swap all data (IMCA, active lift and history) between ', ' og ': ' and ',
+  'Stopp kranen først': 'Stop the crane first', 'Stopp kran/AHC først': 'Stop crane/AHC first',
+  'Skriv inn Hook Load og/eller dybde': 'Enter Hook Load and/or depth', 'Ugyldig tall – bruk f.eks. 1,7 eller 1.7': 'Invalid number – use e.g. 1.7 or 1,7',
+  'Hook Load': 'Hook Load', 'er over kranens maks': 'is above the crane maximum', 'Desimalfeil? Lagre likevel?': 'Decimal error? Save anyway?',
+  'trolig desimalfeil. Ikke lagret – skriv inn manuelt.': 'probably a decimal error. Not saved – enter manually.',
+  'Avlesning registrert': 'Reading added', 'Slette denne avlesningen?': 'Delete this reading?', 'Angre siste avlesning/kamerabilde?': 'Undo last reading/photo?', 'Angret': 'Undone',
+  'Ingen data i aktivt løft': 'No data in active lift', 'Kranen går fortsatt. Stoppe kranen nå (': 'The crane is still running. Stop the crane now (', ') og lagre løftet?': ') and save the lift?',
+  'Lagre løftet i historikken og starte nytt?\nIMCA-timene beholdes.': 'Save the lift to history and start a new one?\nIMCA hours are kept.',
+  'Løft lagret – klar for nytt løft': 'Lift saved – ready for next lift', 'Slette «': 'Delete "', '» fra historikken?\n(IMCA-timene påvirkes ikke.)': '" from history?\n(IMCA hours are not affected.)',
+  'Nullstille IMCA-tellerne for ': 'Reset the IMCA counters for ', '-kranen (krantid og AHC-tid) til 00:00?\n\nTips: last ned backup først.': ' (crane time and AHC time) to 00:00?\n\nTip: download a backup first.',
+  'Er du helt sikker? Dette kan ikke angres.': 'Are you sure? This cannot be undone.', 'Slette historikken også (': 'Delete the history as well (', ' løft)?': ' lifts)?',
+  'Turen er nullstilt': 'Trip has been reset', 'Kunne ikke lagre – ta backup!': 'Could not save – make a backup!',
+  'Gjenopprette backup for begge kranene?\nNåværende data på denne telefonen erstattes.': 'Restore backup for all cranes?\nCurrent data on this phone will be replaced.',
+  'Gjenopprette backup til ': 'Restore backup to ', ' løft': ' lifts', 'Dataene for denne kranen/vinsjen erstattes.': 'The data for this crane/winch will be replaced.',
+  'Backup gjenopprettet': 'Backup restored', 'Ugyldig backupfil': 'Invalid backup file',
+  'Bilde mottatt (': 'Photo received (', ' kB) – behandler...': ' kB) – processing...', 'Laster OCR...': 'Loading OCR...', 'Leser verdier...': 'Reading values...',
+  'Prøver igjen med skjermen forstørret...': 'Retrying with the screen enlarged...',
+  'Laster OCR-motor': 'Loading OCR engine', 'Starter OCR': 'Starting OCR', 'OCR startet': 'OCR started', 'Laster ned språkfil': 'Downloading language file',
+  'Språkfil lastet': 'Language file loaded', 'Gjør klar': 'Preparing', 'Klar': 'Ready', 'Leser NOV-skjerm': 'Reading NOV screen',
+  'Kunne ikke laste OCR. Trenger nett første gang – bruk manuell inntasting.': 'Could not load OCR. Needs internet the first time – use manual entry.',
+  'Tidsavbrudd ved lasting av OCR (dårlig nett?)': 'Timeout loading OCR (poor connection?)', 'Tidsavbrudd ved nedlasting av OCR-språkfil (dårlig nett?)': 'Timeout downloading OCR language file (poor connection?)',
+  'OCR kunne ikke starte: ': 'OCR could not start: ', 'Kunne ikke lese bildet': 'Could not read the image',
+  'Ingen nettforbindelse. OCR må lastes fra nett første gang – skriv inn verdiene manuelt.': 'No internet. OCR must be downloaded the first time – enter the values manually.',
+  'Vinsj valgt automatisk': 'Winch selected automatically', 'Vinsj': 'Winch',
+  'AHC PÅ – AHC-økt startet': 'AHC ON – AHC session started', ' (kran startet også)': ' (crane started too)', 'AHC PÅ (økt pågår allerede)': 'AHC ON (session already running)',
+  'AHC-økt avsluttet og lagret': 'AHC session ended and saved', 'AHC var ikke aktiv': 'AHC was not active',
+  'Fant ikke AHC/NORMAL-status – ingen endring': 'AHC/NORMAL status not found – no change', 'Klokke': 'Clock', 'urimelig – brukte telefonens tid': "implausible – used the phone's time",
+  'Fant ikke klokkeslett – brukte telefonens tid': "Clock not found – used the phone's time", 'Fant ikke «Hook Load»': 'Could not find "Hook Load"', 'Fant ikke «Wire Paid Out»': 'Could not find "Wire Paid Out"',
+  'Kontroller verdiene. Feil? Trykk «Angre» og skriv inn manuelt.': 'Check the values. Wrong? Press "Undo" and enter manually.', 'Vis OCR-tekst': 'Show OCR text', 'Skriv inn verdiene manuelt.': 'Enter the values manually.',
+  '✕ Lukk hjelp': '✕ Close help'
+};
+const lang = () => (root && root.settings && root.settings.lang) || 'no';
+function T(s) { return lang() === 'en' && Object.prototype.hasOwnProperty.call(EN, s) ? EN[s] : s; }
+// Oversett faste tekster i siden. Originalteksten (norsk) huskes, så vi kan bytte tilbake.
+function applyLang() {
+  const en = lang() === 'en';
+  document.documentElement.lang = en ? 'en' : 'no';
+  const skip = new Set(['history', 'readings', 'liveReport', 'ocrBox', 'toast', 'helpNo', 'helpEn']);
+  const walk = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+  let n;
+  while ((n = walk.nextNode())) {
+    let e = n.parentElement, bad = false;
+    while (e) { if (skip.has(e.id) || e.tagName === 'SCRIPT' || e.tagName === 'svg') { bad = true; break; } e = e.parentElement; }
+    if (bad) continue;
+    if (n.__no === undefined) { const t = n.textContent.trim(); if (!t || !Object.prototype.hasOwnProperty.call(EN, t)) continue; n.__no = t; }
+    const target = en ? EN[n.__no] : n.__no;
+    n.textContent = n.textContent.replace(n.textContent.trim(), target);
+  }
+  document.querySelectorAll('[placeholder]').forEach(el => {
+    if (el.dataset.phNo === undefined) el.dataset.phNo = el.placeholder;
+    el.placeholder = en ? (EN[el.dataset.phNo] || el.dataset.phNo) : el.dataset.phNo;
+  });
+  document.getElementById('langBtn').textContent = en ? 'NO' : 'EN';
+  document.getElementById('helpNo').style.display = en ? 'none' : '';
+  document.getElementById('helpEn').style.display = en ? '' : 'none';
+}
+function toggleLang() {
+  root.settings = root.settings || {};
+  root.settings.lang = lang() === 'en' ? 'no' : 'en';
+  save(); applyLang(); render();
+}
+function openHelp() { document.getElementById('helpOverlay').classList.add('open'); document.getElementById('helpOverlay').scrollTop = 0; }
+function closeHelp() { document.getElementById('helpOverlay').classList.remove('open'); }
 
 /* ================= DIVERSE ================= */
 let toastTimer;
@@ -1083,7 +1486,7 @@ window.addEventListener('offline', updateNet);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) render(); });
 window.addEventListener('storage', e => { if (e.key === KEY) { root = loadRoot(); state = root.cranes[root.active]; fillInputs(); render(); } });
 
-save(); fillInputs(); updateNet(); render();
+save(); fillInputs(); updateNet(); applyLang(); render();
 if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
 setInterval(tick, 1000);
 </script>
