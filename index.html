@@ -346,7 +346,7 @@
       <ul>
         <li>Øverst: <b>350t AHC-kran</b> / <b>50t-kran</b> og <b>Main winch (MW)</b> / <b>Aux winch (AW)</b>. Hver kombinasjon har sin egen logg (fire i alt).</li>
         <li>Grønn prikk på en knapp = kranen går i den loggen.</li>
-        <li>Tar du bilde av NOV-skjermen, velges MW/AW automatisk ut fra hvilken knapp som lyser grønt.</li>
+        <li>Velg alltid riktig vinsj (MW/AW) selv før du tar bilde – bildet lagres i loggen du står i.</li>
       </ul>
 
       <h3>3. Et løft steg for steg</h3>
@@ -362,7 +362,7 @@
 
       <h3>4. Bilde av NOV-skjermen</h3>
       <ul>
-        <li>Appen leser: <b>status</b> (NORMAL - MODE / AHC … - MODE), <b>klokke</b>, <b>Hook Load</b>, <b>Wire Paid Out</b>, aktiv vinsj (MW/AW) og <b>Hook pos</b> hvis AHC/ACT-menyen er åpen.</li>
+        <li>Appen leser: <b>status</b> (NORMAL - MODE / AHC … - MODE), <b>klokke</b>, <b>Hook Load</b>, <b>Wire Paid Out</b> og <b>Hook pos</b> hvis AHC/ACT-menyen er åpen.</li>
         <li>AHC-modus på skjermen starter en AHC-økt. NORMAL - MODE avslutter og lagrer den.</li>
         <li>Virker på alle menyene (MAIN WINCH, WINCH CRUISE CONTROL, AHC/ACT …).</li>
         <li><b>Tips:</b> gå nær, så skjermfeltet fyller bildet. Hold telefonen rett foran, og unngå gjenskinn.</li>
@@ -431,7 +431,7 @@
       <ul>
         <li>At the top: <b>350t AHC crane</b> / <b>50t crane</b> and <b>Main winch (MW)</b> / <b>Aux winch (AW)</b>. Each combination has its own log (four in total).</li>
         <li>Green dot on a button = the crane is running in that log.</li>
-        <li>When you photograph the NOV screen, MW/AW is selected automatically from the button that is lit green.</li>
+        <li>Always select the correct winch (MW/AW) yourself before taking a photo – the photo is saved to the log you are in.</li>
       </ul>
 
       <h3>3. A lift step by step</h3>
@@ -447,7 +447,7 @@
 
       <h3>4. Photo of the NOV screen</h3>
       <ul>
-        <li>The app reads: <b>status</b> (NORMAL - MODE / AHC … - MODE), <b>clock</b>, <b>Hook Load</b>, <b>Wire Paid Out</b>, active winch (MW/AW) and <b>Hook pos</b> if the AHC/ACT menu is open.</li>
+        <li>The app reads: <b>status</b> (NORMAL - MODE / AHC … - MODE), <b>clock</b>, <b>Hook Load</b>, <b>Wire Paid Out</b> and <b>Hook pos</b> if the AHC/ACT menu is open.</li>
         <li>AHC mode on the screen starts an AHC session. NORMAL - MODE ends and saves it.</li>
         <li>Works on all menus (MAIN WINCH, WINCH CRUISE CONTROL, AHC/ACT …).</li>
         <li><b>Tip:</b> get close so the screen fills the photo. Hold the phone straight in front and avoid glare.</li>
@@ -1204,8 +1204,7 @@ async function readNovScreen(file, show, crop) {
   // Bonus: «Hook pos» (vises bare i AHC/ACT-menyen)
   const hposLb = findLabel(words, [/^H[O0Q]{2}K$/i, /^P[O0]S/i]);
   if (hposLb) { const v = await readValue(w, img.grayCanvas, valueRect(hposLb), -100, 100); out.hookPos = v.val; out.raw.hookPos = v.raw; }
-  // C. Aktiv vinsj: MW- eller AW-knappen oppe til høyre har grønn/turkis bakgrunn
-  out.winch = detectWinch(words, img);
+  // Vinsj (MW/AW) velges alltid manuelt med knappene øverst – ingen automatisk valg fra bildet.
 
   // Statusboksen direkte: ordet «MODE» lengst ned (det øverst er «HPU NORMAL MODE»)
   const modes = words.filter(x => /^M[O0]DE$/.test(x.text.replace(/[^A-Za-z0-9]/g, '')) && cy(x.bbox) > img.H * 0.12)
@@ -1307,11 +1306,6 @@ async function handleImage(ev) {
     if (!usedScreenTime) t = Date.now();
 
     const msgs = [];
-    if (r.winch && r.winch !== CRANES[root.active].winch) {
-      const k = CRANES[root.active].crane + '-' + r.winch;
-      save(); root.active = k; state = root.cranes[k]; fillInputs();
-      msgs.push('<span class="ok">' + T('Vinsj valgt automatisk') + ': ' + (r.winch === 'MW' ? 'Main winch (MW)' : 'Aux winch (AW)') + '</span>');
-    } else if (r.winch) msgs.push(T('Vinsj') + ': ' + (r.winch === 'MW' ? 'Main winch (MW)' : 'Aux winch (AW)'));
     const maxT = CRANE_MAX[CRANES[root.active].crane];
     let hookWarn = null;
     if (r.hook != null && r.hook > maxT) { hookWarn = r.hook; r.hook = null; }
@@ -1439,7 +1433,7 @@ const EN = {
   'Tidsavbrudd ved lasting av OCR (dårlig nett?)': 'Timeout loading OCR (poor connection?)', 'Tidsavbrudd ved nedlasting av OCR-språkfil (dårlig nett?)': 'Timeout downloading OCR language file (poor connection?)',
   'OCR kunne ikke starte: ': 'OCR could not start: ', 'Kunne ikke lese bildet': 'Could not read the image',
   'Ingen nettforbindelse. OCR må lastes fra nett første gang – skriv inn verdiene manuelt.': 'No internet. OCR must be downloaded the first time – enter the values manually.',
-  'Vinsj valgt automatisk': 'Winch selected automatically', 'Vinsj': 'Winch',
+  
   'AHC PÅ – AHC-økt startet': 'AHC ON – AHC session started', ' (kran startet også)': ' (crane started too)', 'AHC PÅ (økt pågår allerede)': 'AHC ON (session already running)',
   'AHC-økt avsluttet og lagret': 'AHC session ended and saved', 'AHC var ikke aktiv': 'AHC was not active',
   'Fant ikke AHC/NORMAL-status – ingen endring': 'AHC/NORMAL status not found – no change', 'Klokke': 'Clock', 'urimelig – brukte telefonens tid': "implausible – used the phone's time",
