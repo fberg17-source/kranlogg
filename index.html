@@ -713,9 +713,10 @@ function reportFields(s) {
   const hc = hcList.length ? hcList.join('; ') : null;
   const dt = s.start ? date(s.start) + ' ' + clock(s.start) : null;
   const ton = v => Number(v).toFixed(1);
+  const op = (s.name || '').trim() || 'Subsea Lift'; // det som står i «Operasjon»-feltet
   return [
     ['Date/time', dt || '–', dt || ''],
-    ['Operation type', 'Subsea Lift', 'Subsea Lift'],
+    ['Operation type', op, op],
     ['Total use time', decH(s.craneMs) + ' hours', decH(s.craneMs)],
     ['Max tension in hook during operation', s.maxHook != null ? ton(s.maxHook) + ' ton' : '–', s.maxHook != null ? ton(s.maxHook) : ''],
     ['Max wire paid out during operation', s.maxDepth != null ? fmtWire(s.maxDepth) + ' m' : '–', s.maxDepth != null ? fmtWire(s.maxDepth) : ''],
@@ -1353,7 +1354,7 @@ async function copyText(txt) {
   }
 }
 async function shareText(txt) {
-  if (navigator.share) { try { await navigator.share({ title: 'Subsea Lift – ' + CRANES[root.active].short, text: txt }); } catch (e) {} }
+  if (navigator.share) { try { await navigator.share({ title: ((L().name || '').trim() || 'Subsea Lift') + ' – ' + CRANES[root.active].short, text: txt }); } catch (e) {} }
   else copyText(txt);
 }
 function exportJson() {
