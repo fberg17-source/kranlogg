@@ -713,10 +713,10 @@ function reportFields(s) {
   const hc = hcList.length ? hcList.join('; ') : null;
   const dt = s.start ? date(s.start) + ' ' + clock(s.start) : null;
   const ton = v => Number(v).toFixed(1);
-  const op = (s.name || '').trim() || 'Subsea Lift'; // det som står i «Operasjon»-feltet
+  const op = (s.name || '').trim(); // det som står i «Operasjon»-feltet (tomt = ingenting)
   return [
     ['Date/time', dt || '–', dt || ''],
-    ['Operation type', op, op],
+    ['Operation type', op || '–', op],
     ['Total use time', decH(s.craneMs) + ' hours', decH(s.craneMs)],
     ['Max tension in hook during operation', s.maxHook != null ? ton(s.maxHook) + ' ton' : '–', s.maxHook != null ? ton(s.maxHook) : ''],
     ['Max wire paid out during operation', s.maxDepth != null ? fmtWire(s.maxDepth) + ' m' : '–', s.maxDepth != null ? fmtWire(s.maxDepth) : ''],
@@ -752,7 +752,7 @@ function saveLift() {
   } else if (!confirm(T('Lagre løftet i historikken og starte nytt?\nIMCA-timene beholdes.'))) return;
   const s = currentSummary();
   state.history.unshift({
-    id: now, name: (l.name || '').trim() || 'Subsea Lift', comment: (l.comment || '').trim(), start: l.start, end: l.end || null,
+    id: now, name: (l.name || '').trim(), comment: (l.comment || '').trim(), start: l.start, end: l.end || null,
     craneMs: s.craneMs, ahcMs: s.ahcMs, maxHook: s.maxHook, maxDepth: s.maxDepth, hcRanges: s.hcRanges,
     readings: l.readings
   });
@@ -761,7 +761,7 @@ function saveLift() {
 }
 function delHistory(id) {
   const h = state.history.find(x => x.id === id); if (!h) return;
-  if (!confirm(T('Slette «') + h.name + T('» fra historikken?\n(IMCA-timene påvirkes ikke.)'))) return;
+  if (!confirm(T('Slette «') + (h.name || T('Løft')) + T('» fra historikken?\n(IMCA-timene påvirkes ikke.)'))) return;
   state.history = state.history.filter(x => x.id !== id); save(); render();
 }
 function copyHistory(id) { const h = state.history.find(x => x.id === id); if (h) copyText(reportText(h)); }
@@ -847,7 +847,7 @@ function renderHistory(skipBankReset) {
   el.innerHTML = state.history.map((h, n) => {
     const nr = state.history.length - n;
     const when = h.start ? date(h.start) + ' · ' + clock(h.start) + ' – ' + (h.end ? clock(h.end) : '?') : T('Tidspunkt ikke registrert');
-    return '<div class="hist"><h4><span>' + nr + '. ' + esc(h.name) + '</span>' +
+    return '<div class="hist"><h4><span>' + nr + '. ' + esc(h.name || T('Løft')) + '</span>' +
       '<button class="btn-outline btn-small" onclick="delHistory(' + h.id + ')">' + T('Slett') + '</button></h4>' +
       '<div class="meta">' + esc(when) + '<br>Krantid ' + hm(h.craneMs) + ' (' + decH(h.craneMs) + ' h) · AHC ' + Math.round(h.ahcMs / MIN) + ' min (' + decH(h.ahcMs) + ' h)</div>' +
       reportHtml(h) +
@@ -1354,7 +1354,7 @@ async function copyText(txt) {
   }
 }
 async function shareText(txt) {
-  if (navigator.share) { try { await navigator.share({ title: ((L().name || '').trim() || 'Subsea Lift') + ' – ' + CRANES[root.active].short, text: txt }); } catch (e) {} }
+  if (navigator.share) { try { await navigator.share({ title: ((L().name || '').trim() ? L().name.trim() + ' – ' : '') + CRANES[root.active].short, text: txt }); } catch (e) {} }
   else copyText(txt);
 }
 function exportJson() {
@@ -1407,7 +1407,7 @@ const EN = {
   'Last ned backup': 'Download backup', 'Gjenopprett': 'Restore', 'Ført på feil kran/vinsj? Bytt dataene med:': 'Logged on the wrong crane/winch? Swap data with:', '⇄ Bytt': '⇄ Swap',
   'Alt lagres kun i nettleseren på denne telefonen. Ta backup før nullstilling, telefonbytte eller tømming av nettleserdata.': 'Everything is stored only in the browser on this phone. Back up before resetting, changing phone or clearing browser data.',
   'Skriv inn operasjon...': 'Enter operation...', 'Initialer / kommentar...': 'Initials / comment...', 'f.eks. 1,7': 'e.g. 1.7', 'f.eks. 1795': 'e.g. 1795',
-  'Ingen lagrede løft.': 'No saved lifts.', 'Tidspunkt ikke registrert': 'Time not recorded', 'Slett': 'Delete', 'Kopier rapport': 'Copy report', 'Kopier': 'Copy',
+  'Ingen lagrede løft.': 'No saved lifts.', 'Tidspunkt ikke registrert': 'Time not recorded', 'Slett': 'Delete', 'Løft': 'Lift', 'Kopier rapport': 'Copy report', 'Kopier': 'Copy',
   'Kopiert: ': 'Copied: ', 'Kopiert': 'Copied', 'rapport': 'report', 'Kopiering feilet': 'Copy failed',
   'Kran startet': 'Crane started', 'Kran stoppet – tiden er lagt til IMCA': 'Crane stopped – time added to IMCA', 'AHC startet': 'AHC started', 'AHC stoppet': 'AHC stopped',
   'AHC startet (kran startet også)': 'AHC started (crane started too)', 'Byttet til ': 'Switched to ', 'Dataene er byttet': 'Data swapped',
