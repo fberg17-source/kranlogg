@@ -1127,9 +1127,23 @@ function findLabel(words, res, reject) {
   }
   return null;
 }
-function valueRect(lb) { // verdiboksen står til høyre for etiketten
+function valueRect(lb, words) { // verdiboksen står til høyre for etiketten
   const h = lb.h || (lb.y1 - lb.y0), c = lb.cy ?? cy(lb), w = Math.min(lb.x1 - lb.x0, h * 7.5);
-  return { x0: lb.x1 + 0.3 * w, x1: lb.x1 + 1.55 * w, y0: c - 0.95 * h, y1: c + 0.95 * h };
+  const y0 = c - 0.95 * h, y1 = c + 0.95 * h;
+  if (words) {
+    // Avstanden fra etikett til tall varierer mellom sidene (AHC/ACT-siden har tallet langt til høyre).
+    // Finn derfor nærmeste tall på samme rad i helsideteksten og klipp rundt det.
+    const row = { y0: c - h / 2, y1: c + h / 2 };
+    const num = words.filter(x => /\d/.test(x.text) && x.bbox.x0 > lb.x1 && x.bbox.x0 - lb.x1 < 12 * h && sameRow(x.bbox, row))
+      .sort((a, b) => a.bbox.x0 - b.bbox.x0)[0];
+    if (num) return { x0: Math.max(lb.x1 + 0.3 * h, num.bbox.x0 - 2.5 * h), x1: num.bbox.x1 + 0.4 * h, y0, y1 };
+  }
+  return { x0: lb.x1 + 0.3 * w, x1: lb.x1 + 1.55 * w, y0, y1 };
+}
+// Reserve når tallet ikke ble funnet: et bredt utsnitt som dekker begge sideoppsettene
+function wideValueRect(lb) {
+  const h = lb.h || (lb.y1 - lb.y0), c = lb.cy ?? cy(lb);
+  return { x0: lb.x1 + 0.5 * h, x1: lb.x1 + 10.5 * h, y0: c - 0.95 * h, y1: c + 0.95 * h };
 }
 const RE_TIME = /^([01]?\d|2[0-3])[:.]([0-5]\d)(?:[:.]([0-5]\d))?$/;
 function findClock(words, H, text) {
@@ -1212,10 +1226,9 @@ async function readNovScreen(file, show, crop) {
   out.hookLabel = !!hookLb;
   if (hookLb) {
     // Tom krok kan vise litt under null (f.eks. -0.2), så negative verdier godtas
-    let v = await readValue(w, img.grayCanvas, valueRect(hookLb), -20, 400);
-    if (v.val == null) { // tallet ikke funnet: prøv et større utsnitt (bildet tatt på skrå / etiketten lest kortere enn den er)
-      const r0 = valueRect(hookLb), ww = r0.x1 - r0.x0, hh = r0.y1 - r0.y0;
-      const v2 = await readValue(w, img.grayCanvas, { x0: r0.x0 - ww * 0.15, x1: r0.x1 + ww * 0.6, y0: r0.y0 - hh * 0.25, y1: r0.y1 + hh * 0.25 }, -20, 400);
+    let v = await readValue(w, img.grayCanvas, valueRect(hookLb, words), -20, 400);
+    if (v.val == null) { // tallet ikke funnet: prøv et bredt utsnitt
+      const v2 = await readValue(w, img.grayCanvas, wideValueRect(hookLb), -20, 400);
       v = { val: v2.val, raw: v.raw + ' || ' + v2.raw };
     }
     out.hook = v.val; out.raw.hook = v.raw;
@@ -1225,10 +1238,10 @@ async function readNovScreen(file, show, crop) {
     const prev = words[i - 1];
     return prev && /^M[I1L]N$/i.test(prev.text.replace(/[^A-Za-z0-9]/g, '')) && sameRow(prev.bbox, b) && b.x0 - prev.bbox.x1 < (b.y1 - b.y0) * 2;
   });
-  if (wireLb) { const v = await readValue(w, img.grayCanvas, valueRect(wireLb), 0, 5000); out.depth = v.val; out.raw.depth = v.raw; }
+  if (wireLb) { const v = await readValue(w, img.grayCanvas, valueRect(wireLb, words), 0, 5000); out.depth = v.val; out.raw.depth = v.raw; }
   // Bonus: «Hook pos» (vises bare i AHC/ACT-menyen)
   const hposLb = findLabel(words, [/^H[O0Q]{2}K$/i, /^P[O0]S/i]);
-  if (hposLb) { const v = await readValue(w, img.grayCanvas, valueRect(hposLb), -100, 100); out.hookPos = v.val; out.raw.hookPos = v.raw; }
+  if (hposLb) { const v = await readValue(w, img.grayCanvas, valueRect(hposLb, words), -100, 100); out.hookPos = v.val; out.raw.hookPos = v.raw; }
   // Vinsj (MW/AW) velges alltid manuelt med knappene øverst – ingen automatisk valg fra bildet.
 
   // Statusboksen direkte: ordet «MODE» lengst ned (det øverst er «HPU NORMAL MODE»)
