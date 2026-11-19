@@ -362,7 +362,7 @@
 
       <h3>4. Bilde av NOV-skjermen</h3>
       <ul>
-        <li>Appen leser: <b>status</b> (NORMAL - MODE / AHC … - MODE), <b>klokke</b>, <b>Hook Load</b>, <b>Wire Paid Out</b> og <b>Hook pos</b> hvis AHC/ACT-menyen er åpen.</li>
+        <li>Appen leser: <b>status</b> (NORMAL - MODE / AHC … - MODE), <b>Hook Load</b> og <b>Wire Paid Out</b>. Tiden tas fra telefonen.</li>
         <li>AHC-modus på skjermen starter en AHC-økt. NORMAL - MODE avslutter og lagrer den.</li>
         <li>Virker på alle menyene (MAIN WINCH, WINCH CRUISE CONTROL, AHC/ACT …).</li>
         <li><b>Tips:</b> gå nær, så skjermfeltet fyller bildet. Hold telefonen rett foran, og unngå gjenskinn.</li>
@@ -447,7 +447,7 @@
 
       <h3>4. Photo of the NOV screen</h3>
       <ul>
-        <li>The app reads: <b>status</b> (NORMAL - MODE / AHC … - MODE), <b>clock</b>, <b>Hook Load</b>, <b>Wire Paid Out</b> and <b>Hook pos</b> if the AHC/ACT menu is open.</li>
+        <li>The app reads: <b>status</b> (NORMAL - MODE / AHC … - MODE), <b>Hook Load</b> and <b>Wire Paid Out</b>. The time is taken from the phone.</li>
         <li>AHC mode on the screen starts an AHC session. NORMAL - MODE ends and saves it.</li>
         <li>Works on all menus (MAIN WINCH, WINCH CRUISE CONTROL, AHC/ACT …).</li>
         <li><b>Tip:</b> get close so the screen fills the photo. Hold the phone straight in front and avoid glare.</li>
@@ -1240,8 +1240,7 @@ async function readNovScreen(file, show, crop) {
   });
   if (wireLb) { const v = await readValue(w, img.grayCanvas, valueRect(wireLb, words), 0, 5000); out.depth = v.val; out.raw.depth = v.raw; }
   // Bonus: «Hook pos» (vises bare i AHC/ACT-menyen)
-  const hposLb = findLabel(words, [/^H[O0Q]{2}K$/i, /^P[O0]S/i]);
-  if (hposLb) { const v = await readValue(w, img.grayCanvas, valueRect(hposLb, words), -100, 100); out.hookPos = v.val; out.raw.hookPos = v.raw; }
+  // Hook pos og klokke leses ikke lenger – telefonens tid brukes (raskere, og klokkeboksen var upålitelig)
   // Vinsj (MW/AW) velges alltid manuelt med knappene øverst – ingen automatisk valg fra bildet.
 
   // Statusboksen direkte: ordet «MODE» lengst ned (det øverst er «HPU NORMAL MODE»)
@@ -1284,40 +1283,11 @@ async function readNovScreen(file, show, crop) {
       out.raw.status = await readCrop(w, img.grayCanvas, R(-0.9, 6.4, 1.13, 1.62), false);
       out.status = statusFromText(out.raw.status);
     }
-    // Klokkeboksen har svak, tynn skrift -> prøv flere bildebehandlinger, godta tid innen ±30 min fra nå
-    const ckRect = R(6.8, 10.5, -2.88, -2.42);
-    const variants = [{ scale: 4, adapt: 8, dilate: true, blur: 2 }, { scale: 5, adapt: 8, blur: 3 }, { scale: 4, adapt: 5, blur: 2 },
-                      { scale: 4, adapt: 8 }, { scale: 3 }];
-    const seen = [];
-    for (const v of variants) {
-      const ck = await readCrop(w, img.grayCanvas, ckRect, false, '0123456789:/ ', v);
-      seen.push(ck);
-      const tm = ck.match(/([01]?\d|2[0-3]):([0-5]\d):([0-5]\d)/) || ck.match(/([01]?\d|2[0-3]):([0-5]\d)/);
-      if (!tm) continue;
-      const tt = timeToTs(tm[0]);
-      if (tt != null && Math.abs(Date.now() - tt) < 30 * MIN) { out.clockFromBox = { text: tm[0], date: null }; break; }
-    }
-    out.raw.clockBox = seen.join(' | ');
   }
   if (!out.status) { // reserve: let i hele teksten (men ikke «HPU NORMAL»)
     const t2 = text.toUpperCase().replace(/HPU\s*N[O0]RMAL(\s*M[O0]DE)?/g, '');
     if (/N[O0]RMAL\s*[-–]\s*M/.test(t2)) out.status = 'NORMAL';
     else if (/\bAHC\b/.test(t2)) out.status = 'AHC';
-  }
-  if (out.clockFromBox) {
-    const cb = out.clockFromBox, [hh, mi, ss] = cb.text.split(':').map(Number);
-    let t = null;
-    if (cb.date) { const d = new Date(+cb.date[3], +cb.date[1] - 1, +cb.date[2], hh, mi, ss || 0).getTime(); if (Math.abs(Date.now() - d) < 6 * HOUR) t = d; }
-    out.clock = { str: cb.text, t: t ?? timeToTs(cb.text) };
-  }
-  if (!out.clock) out.clock = findClock(words, img.H, text);
-  if (!out.clock) { // reserve: les øverste halvdel i gråtoner og let etter dato/klokke
-    const top = document.createElement('canvas'); top.width = img.W; top.height = Math.round(img.H * 0.5);
-    const tc = top.getContext('2d'); tc.filter = 'contrast(1.7)'; tc.drawImage(img.grayCanvas, 0, 0);
-    await w.setParameters({ tessedit_pageseg_mode: '11', tessedit_char_whitelist: '0123456789:/ ' });
-    const r2 = (await w.recognize(top)).data;
-    out.clock = findClock((r2.words || []).filter(x => x.text && x.text.trim()), img.H, r2.text || '');
-    out.raw.clock = (r2.text || '').trim();
   }
   await w.setParameters({ tessedit_pageseg_mode: '11', tessedit_char_whitelist: '' });
   out.url = img.url;
@@ -1333,15 +1303,13 @@ async function handleImage(ev) {
   box.scrollIntoView({ behavior: 'smooth', block: 'center' });
   try {
     let r = await readNovScreen(file, show, false);
-    const score = x => (x.hook != null) + (x.depth != null) + (x.status != null) + (x.clock != null);
+    const score = x => (x.hook != null) + (x.depth != null) + (x.status != null);
     if (r.hook == null || r.depth == null || r.status == null || r.labelH < 30) {
       // Bildet er trolig tatt på avstand: prøv igjen med bare skjermen klippet ut og forstørret
       show(T('Prøver igjen med skjermen forstørret...'), r.url);
       try { const r2 = await readNovScreen(file, show, true); if (score(r2) > score(r) || (r.labelH < 30 && score(r2) >= score(r))) r = r2; } catch (e) {}
     }
-    let t = r.clock && r.clock.t != null ? r.clock.t : null;
-    const usedScreenTime = t != null && Math.abs(Date.now() - t) < 30 * MIN;
-    if (!usedScreenTime) t = Date.now();
+    let t = Date.now(); // telefonens klokke
 
     const msgs = [];
     const maxT = CRANE_MAX[CRANES[root.active].crane];
@@ -1365,14 +1333,14 @@ async function handleImage(ev) {
       addReading({ t, hook: r.hook ?? null, depth: r.depth ?? null, hookPos: r.hookPos ?? null,
         ahc: wasAhc ? sessBefore : (L().ahcOpen ? L().ahcSess : 0), src: 'ocr' });
     }
-    msgs.push(r.clock ? T('Klokke') + ': <b>' + esc(r.clock.str) + '</b>' + (usedScreenTime ? '' : ' <span class="warn">(' + T('urimelig – brukte telefonens tid') + ')</span>') : '<span class="warn">' + T('Fant ikke klokkeslett – brukte telefonens tid') + '</span>');
+    msgs.push(T('Klokke') + ': <b>' + clock(t) + '</b>');
     if (hookWarn != null) msgs.push('<span class="err">⚠ Hook Load ' + hookWarn + ' t ' + T('er over kranens maks') + ' (' + maxT + ' t) – ' + T('trolig desimalfeil. Ikke lagret – skriv inn manuelt.') + '</span>');
     else msgs.push(r.hook != null ? 'Hook Load: <b>' + fmtNum(r.hook) + ' t</b>'
       : '<span class="warn">' + T(r.hookLabel ? 'Fant «Hook Load», men klarte ikke lese tallet' : 'Fant ikke «Hook Load»') + '</span>');
     msgs.push(r.depth != null ? 'Wire Paid Out: <b>' + fmtNum(r.depth) + ' m</b>' : '<span class="warn">' + T('Fant ikke «Wire Paid Out»') + '</span>');
     if (r.hookPos != null) msgs.push('Hook pos: <b>' + fmtNum(r.hookPos) + ' m</b>');
     msgs.push('<span style="color:var(--muted)">' + T('Kontroller verdiene. Feil? Trykk «Angre» og skriv inn manuelt.') + '</span>');
-    const rawInfo = (r.raw.clockBox ? 'Klokke-boks: ' + r.raw.clockBox + '\n' : '') + (r.raw.clock ? 'Klokke-søk: ' + r.raw.clock.replace(/\n+/g, ' ') + '\n' : '') + 'Status-boks: ' + (r.raw.status ?? '–') + '\nHook Load-boks: ' + (r.raw.hook ?? '–') + '\nWire Paid Out-boks: ' + (r.raw.depth ?? '–') + '\n\n' + r.text.trim();
+    const rawInfo = 'Status-boks: ' + (r.raw.status ?? '–') + '\nHook Load-boks: ' + (r.raw.hook ?? '–') + '\nWire Paid Out-boks: ' + (r.raw.depth ?? '–') + '\n\n' + r.text.trim();
     show(msgs.join('<br>') + '<details style="margin-top:8px"><summary>' + T('Vis OCR-tekst') + '</summary><div class="ocr-raw">' + esc(rawInfo) + '</div></details>', r.url);
     save(); render(); vibrate();
   } catch (e) {
