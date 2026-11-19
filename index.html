@@ -1090,6 +1090,16 @@ async function readValue(w, src, rect, min, max) {
   let best = null, bn = 0; for (const [v, n] of count) if (n > bn) { best = v; bn = n; }
   return { val: best, raw: raws.join(' | ') };
 }
+// Uskarp ordmatch: godtar inntil d feilleste bokstaver (OCR leser f.eks. «Hock», «H0ok», «Lood»)
+function lev(a, b) {
+  const m = a.length, n = b.length; let prev = Array.from({ length: n + 1 }, (_, j) => j);
+  for (let i = 1; i <= m; i++) { const cur = [i];
+    for (let j = 1; j <= n; j++) cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+    prev = cur; }
+  return prev[n];
+}
+const fz = (target, d) => ({ test: s => { s = String(s).toUpperCase().replace(/0/g, 'O').replace(/[1|]/g, 'I');
+  return Math.abs(s.length - target.length) <= d && lev(s, target) <= d; } });
 const cy = b => (b.y0 + b.y1) / 2;
 const sameRow = (a, b) => Math.abs(cy(a) - cy(b)) < Math.max(a.y1 - a.y0, b.y1 - b.y0) * 0.8;
 // Finn en etikett som består av flere ord etter hverandre på samme rad
@@ -1190,12 +1200,26 @@ async function readNovScreen(file, show, crop) {
   const out = { text, raw: {} };
 
   // Hook Load – men ikke «Allowable Hook Load» (eller LOAD MW / SWL)
-  const hookLb = findLabel(words, [/^H[O0Q]{2}K$/i, /^L[O0Q]AD/i], (b, i) => {
+  const notAllowable = (b, i) => {
     const prev = words[i - 1];
     return prev && /ABLE|ALLOW|^AL/i.test(prev.text) && sameRow(prev.bbox, b) && b.x0 - prev.bbox.x1 < (b.y1 - b.y0) * 2;
-  });
+  };
+  // 1) eksakt «Hook» «Load»  2) uskarpt (én feillest bokstav per ord)  3) slått sammen til ett ord «HookLoad»
+  const hookLb = findLabel(words, [/^H[O0Q]{2}K$/i, /^L[O0Q]AD/i], notAllowable)
+    || findLabel(words, [fz('HOOK', 1), fz('LOAD', 1)], notAllowable)
+    || findLabel(words, [fz('HOOKLOAD', 2)], notAllowable);
   out.labelH = hookLb ? hookLb.y1 - hookLb.y0 : 0; // teksthøyde – liten = bildet tatt på avstand
-  if (hookLb) { const v = await readValue(w, img.grayCanvas, valueRect(hookLb), 0, 400); out.hook = v.val; out.raw.hook = v.raw; }
+  out.hookLabel = !!hookLb;
+  if (hookLb) {
+    // Tom krok kan vise litt under null (f.eks. -0.2), så negative verdier godtas
+    let v = await readValue(w, img.grayCanvas, valueRect(hookLb), -20, 400);
+    if (v.val == null) { // tallet ikke funnet: prøv et større utsnitt (bildet tatt på skrå / etiketten lest kortere enn den er)
+      const r0 = valueRect(hookLb), ww = r0.x1 - r0.x0, hh = r0.y1 - r0.y0;
+      const v2 = await readValue(w, img.grayCanvas, { x0: r0.x0 - ww * 0.15, x1: r0.x1 + ww * 0.6, y0: r0.y0 - hh * 0.25, y1: r0.y1 + hh * 0.25 }, -20, 400);
+      v = { val: v2.val, raw: v.raw + ' || ' + v2.raw };
+    }
+    out.hook = v.val; out.raw.hook = v.raw;
+  }
   // Wire paid out – men ikke «Min Wire paid out»
   const wireLb = findLabel(words, [/^W[I1L|]RE$/i, /^PA[I1L|]D$/i, /^[O0]UT$/i], (b, i) => {
     const prev = words[i - 1];
@@ -1330,7 +1354,8 @@ async function handleImage(ev) {
     }
     msgs.push(r.clock ? T('Klokke') + ': <b>' + esc(r.clock.str) + '</b>' + (usedScreenTime ? '' : ' <span class="warn">(' + T('urimelig – brukte telefonens tid') + ')</span>') : '<span class="warn">' + T('Fant ikke klokkeslett – brukte telefonens tid') + '</span>');
     if (hookWarn != null) msgs.push('<span class="err">⚠ Hook Load ' + hookWarn + ' t ' + T('er over kranens maks') + ' (' + maxT + ' t) – ' + T('trolig desimalfeil. Ikke lagret – skriv inn manuelt.') + '</span>');
-    else msgs.push(r.hook != null ? 'Hook Load: <b>' + fmtNum(r.hook) + ' t</b>' : '<span class="warn">' + T('Fant ikke «Hook Load»') + '</span>');
+    else msgs.push(r.hook != null ? 'Hook Load: <b>' + fmtNum(r.hook) + ' t</b>'
+      : '<span class="warn">' + T(r.hookLabel ? 'Fant «Hook Load», men klarte ikke lese tallet' : 'Fant ikke «Hook Load»') + '</span>');
     msgs.push(r.depth != null ? 'Wire Paid Out: <b>' + fmtNum(r.depth) + ' m</b>' : '<span class="warn">' + T('Fant ikke «Wire Paid Out»') + '</span>');
     if (r.hookPos != null) msgs.push('Hook pos: <b>' + fmtNum(r.hookPos) + ' m</b>');
     msgs.push('<span style="color:var(--muted)">' + T('Kontroller verdiene. Feil? Trykk «Angre» og skriv inn manuelt.') + '</span>');
@@ -1438,7 +1463,7 @@ const EN = {
   'AHC PÅ – AHC-økt startet': 'AHC ON – AHC session started', ' (kran startet også)': ' (crane started too)', 'AHC PÅ (økt pågår allerede)': 'AHC ON (session already running)',
   'AHC-økt avsluttet og lagret': 'AHC session ended and saved', 'AHC var ikke aktiv': 'AHC was not active',
   'Fant ikke AHC/NORMAL-status – ingen endring': 'AHC/NORMAL status not found – no change', 'Klokke': 'Clock', 'urimelig – brukte telefonens tid': "implausible – used the phone's time",
-  'Fant ikke klokkeslett – brukte telefonens tid': "Clock not found – used the phone's time", 'Fant ikke «Hook Load»': 'Could not find "Hook Load"', 'Fant ikke «Wire Paid Out»': 'Could not find "Wire Paid Out"',
+  'Fant ikke klokkeslett – brukte telefonens tid': "Clock not found – used the phone's time", 'Fant ikke «Hook Load»': 'Could not find "Hook Load"', 'Fant «Hook Load», men klarte ikke lese tallet': 'Found "Hook Load" but could not read the number','Fant ikke «Wire Paid Out»': 'Could not find "Wire Paid Out"',
   'Kontroller verdiene. Feil? Trykk «Angre» og skriv inn manuelt.': 'Check the values. Wrong? Press "Undo" and enter manually.', 'Vis OCR-tekst': 'Show OCR text', 'Skriv inn verdiene manuelt.': 'Enter the values manually.',
   '✕ Lukk hjelp': '✕ Close help'
 };
