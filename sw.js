@@ -1,5 +1,5 @@
 // Service worker: gjør appen tilgjengelig offline (også OCR etter første bruk)
-const CACHE = 'nov350t-v18';
+const CACHE = 'nov350t-v19';
 const CORE = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png'];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(CORE)).then(() => self.skipWaiting()));
@@ -13,7 +13,7 @@ self.addEventListener('fetch', e => {
   const url = new URL(req.url);
   // Egen side: nett først (får oppdateringer), cache hvis offline
   if (url.origin === location.origin) {
-    e.respondWith(fetch(req).then(r => { const c = r.clone(); caches.open(CACHE).then(ca => ca.put(req, c)); return r; })
+    e.respondWith(fetch(req, { cache: 'no-cache' }).then(r => { const c = r.clone(); caches.open(CACHE).then(ca => ca.put(req, c)); return r; })
       .catch(() => caches.match(req).then(r => r || caches.match('./index.html'))));
     return;
   }
