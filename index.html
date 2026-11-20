@@ -633,7 +633,20 @@ function act(fn) {
 function craneStart() { act(() => { if (doCraneStart(takeManTime())) toast(T('Kran startet')); }); }
 function craneStop() { act(() => { if (doCraneStop(takeManTime())) toast(T('Kran stoppet – tiden er lagt til IMCA')); }); }
 function ahcStart() { act(() => { const r = doAhcStart(takeManTime()); if (r.started) toast(r.autoCrane ? 'AHC startet (kran startet også)' : 'AHC startet'); }); }
-function ahcStop() { act(() => { if (doAhcStop(takeManTime())) toast(T('AHC stoppet')); }); }
+function ahcStop() {
+  // Påminnelse: uten et ferskt bilde i denne AHC-økta kan siste dybde mangle i «Wire paid out during HC/CT»
+  const l = L();
+  if (l.ahcOpen && !document.getElementById('manTime').value) {
+    const sess = l.ahcSess || 1, now = Date.now();
+    const recent = (l.readings || []).some(r => r.depth != null && (r.ahc === true ? 1 : r.ahc) === sess && r.t >= now - 3 * 60000);
+    if (!recent && !confirm(T('Ingen bilde av NOV-skjermen de siste 3 min i denne AHC-økta – siste dybde kan mangle i HC/CT.') + '\n\n' + T('Stoppe AHC likevel?') + '\n' + T('(Avbryt = ta bilde først, og trykk AHC STOPP etterpå)'))) {
+      document.getElementById('cameraInput').closest('label, .file-btn')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      toast(T('Ta bilde av skjermen, og trykk AHC STOPP etterpå'));
+      return;
+    }
+  }
+  act(() => { if (doAhcStop(takeManTime())) toast(T('AHC stoppet')); });
+}
 
 function switchCrane(crane, winch) {
   const cur = CRANES[root.active];
@@ -1444,7 +1457,7 @@ const EN = {
   'AHC PÅ – AHC-økt startet': 'AHC ON – AHC session started', ' (kran startet også)': ' (crane started too)', 'AHC PÅ (økt pågår allerede)': 'AHC ON (session already running)',
   'AHC-økt avsluttet og lagret': 'AHC session ended and saved', 'AHC var ikke aktiv': 'AHC was not active',
   'Fant ikke AHC/NORMAL-status – ingen endring': 'AHC/NORMAL status not found – no change', 'Klokke': 'Clock', 'urimelig – brukte telefonens tid': "implausible – used the phone's time",
-  'Fant ikke klokkeslett – brukte telefonens tid': "Clock not found – used the phone's time", 'Fant ikke «Hook Load»': 'Could not find "Hook Load"', 'Fant «Hook Load», men klarte ikke lese tallet': 'Found "Hook Load" but could not read the number','Fant ikke «Wire Paid Out»': 'Could not find "Wire Paid Out"',
+  'Fant ikke klokkeslett – brukte telefonens tid': "Clock not found – used the phone's time", 'Fant ikke «Hook Load»': 'Could not find "Hook Load"', 'Ingen bilde av NOV-skjermen de siste 3 min i denne AHC-økta – siste dybde kan mangle i HC/CT.': 'No photo of the NOV screen in the last 3 min of this AHC session – the last depth may be missing from HC/CT.', 'Stoppe AHC likevel?': 'Stop AHC anyway?', '(Avbryt = ta bilde først, og trykk AHC STOPP etterpå)': '(Cancel = take a photo first, then press AHC STOP)', 'Ta bilde av skjermen, og trykk AHC STOPP etterpå': 'Take a photo of the screen, then press AHC STOP', 'Fant «Hook Load», men klarte ikke lese tallet': 'Found "Hook Load" but could not read the number','Fant ikke «Wire Paid Out»': 'Could not find "Wire Paid Out"',
   'Kontroller verdiene. Feil? Trykk «Angre» og skriv inn manuelt.': 'Check the values. Wrong? Press "Undo" and enter manually.', 'Vis OCR-tekst': 'Show OCR text', 'Skriv inn verdiene manuelt.': 'Enter the values manually.',
   '✕ Lukk hjelp': '✕ Close help'
 };
