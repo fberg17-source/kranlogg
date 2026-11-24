@@ -201,6 +201,28 @@
   <button class="btn-outline" onclick="resetTrip()">Nullstill tur (kun etter endt tur)</button>
 </section>
 
+<!-- 1b. SAMLET IMCA – ALLE KRANER -->
+<section class="card imca">
+  <div class="card-title">
+    <span>Samlet IMCA – alle kraner (hele turen)</span>
+    <span style="color:var(--amber)">TIL IMCA-BOK</span>
+  </div>
+  <div class="grid2">
+    <div class="stat-box">
+      <span class="stat-label">SUM KRANTID (TT:MM)</span>
+      <div class="stat-val" id="sumCrane">00:00</div>
+      <div class="stat-dec" id="sumCraneDec">0.00 hours</div>
+    </div>
+    <div class="stat-box">
+      <span class="stat-label">SUM AHC-TID (TT:MM)</span>
+      <div class="stat-val blue" id="sumAhc">00:00</div>
+      <div class="stat-dec" id="sumAhcDec">0.00 hours</div>
+    </div>
+  </div>
+  <div id="sumBreakdown" class="readings" style="margin-top:10px;"></div>
+  <div class="hint">Summen av alle fire vinsjloggene. Nullstilles ikke her – bruk «Nullstill tur» på hver kran.</div>
+</section>
+
 <!-- 2. AKTIVT LØFT -->
 <section class="card">
   <div class="card-title">
@@ -343,7 +365,7 @@
   </details>
 </section>
 
-<div class="version">Subsea Kranlogg V1.2 · Made by Frank Berg</div>
+<div class="version">Subsea Kranlogg V1.3 · Made by Frank Berg</div>
 
 <!-- VELKOMST (vises bare første gang) -->
 <div id="welcomeOverlay" class="help-overlay welcome" onclick="if (event.target === this) closeWelcome()">
@@ -356,7 +378,7 @@
     </svg>
     <h2>Subsea Kranlogg</h2>
     <div class="welcome-by">Made by Frank Berg</div>
-    <div class="welcome-ver">V1.2</div>
+    <div class="welcome-ver">V1.3</div>
     <button class="btn-amber" onclick="closeWelcome()">OK</button>
   </div>
 </div>
@@ -367,7 +389,7 @@
     <button class="btn-amber help-close" onclick="closeHelp()" id="helpCloseBtn">✕ Lukk hjelp</button>
 
     <div id="helpNo">
-      <h2>Hjelp – Subsea Kranlogg V1.2</h2>
+      <h2>Hjelp – Subsea Kranlogg V1.3</h2>
       <p>Kranlogg for 350t AHC-kranen og 50t-kranen. Appen fører IMCA-timer for hele turen og lager rapporten du limer inn i PC-loggen («New Operation Log Entry»).</p>
 
       <h3>1. Kom i gang</h3>
@@ -443,6 +465,7 @@
         <li>IMCA-ruta teller samlet krantid og AHC-tid for hele turen i vanlig tid (TT:MM), med desimaltimer under.</li>
         <li>Den nullstilles <b>aldri</b> automatisk – bare med <b>Nullstill tur</b> etter endt tur.</li>
         <li>Sletter du et løft i historikken, påvirkes ikke IMCA-timene.</li>
+        <li><b>«Samlet IMCA – alle kraner»</b> øverst viser krantid og AHC-tid for alle fire vinsjer lagt sammen, med oppdeling per vinsj – klart til å føre i IMCA-boka.</li>
       </ul>
 
       <h3>9. Backup</h3>
@@ -460,7 +483,7 @@
     </div>
 
     <div id="helpEn" style="display:none">
-      <h2>Help – Subsea Crane Log V1.2</h2>
+      <h2>Help – Subsea Crane Log V1.3</h2>
       <p>Crane log for the 350t AHC crane and the 50t crane. The app keeps IMCA hours for the whole trip and builds the report you paste into the PC log ("New Operation Log Entry").</p>
 
       <h3>1. Getting started</h3>
@@ -536,6 +559,7 @@
         <li>The IMCA box counts total crane time and AHC time for the whole trip in clock time (HH:MM), with decimal hours below.</li>
         <li>It is <b>never</b> reset automatically – only with <b>Reset trip</b> after the trip has ended.</li>
         <li>Deleting a lift from history does not change the IMCA hours.</li>
+        <li><b>"Samlet IMCA – alle kraner"</b> at the top shows crane time and AHC time for all four winches added together, with a per-winch breakdown – ready to enter in the IMCA book.</li>
       </ul>
 
       <h3>9. Backup</h3>
@@ -911,6 +935,7 @@ function render() {
   set('imcaCrane', hhmm(ic)); set('imcaCraneDec', decH(ic) + ' hours');
   set('imcaAhc', hhmm(ia)); set('imcaAhcDec', decH(ia) + ' hours');
   set('tripInfo', T('Tur startet ') + date(state.tripStart) + ' · ' + state.history.length + T(' løft i historikk'));
+  renderSumImca();
 
   set('liveStart', l.start ? clock(l.start) : '--:--');
   set('liveCrane', hhmmss(liftCraneMs(now)));
@@ -965,6 +990,29 @@ function renderHistory(skipBankReset) {
 }
 function set(id, txt) { const e = document.getElementById(id); if (e.textContent !== txt) e.textContent = txt; }
 
+/* ================= SAMLET IMCA (alle fire vinsjer lagt sammen) ================= */
+function sumImca() {
+  const now = Date.now();
+  let c = 0, a = 0; const rows = [];
+  for (const k of Object.keys(CRANES)) {
+    const s = root.cranes[k]; if (!isCraneState(s)) continue;
+    const lc = s.imca.craneMs + (s.lift.craneOpen ? Math.max(0, now - s.lift.craneOpen) : 0);
+    const la = s.imca.ahcMs + (s.lift.ahcOpen ? Math.max(0, now - s.lift.ahcOpen) : 0);
+    c += lc; a += la;
+    rows.push({ short: CRANES[k].short, lc, la });
+  }
+  return { c, a, rows };
+}
+function renderSumImca() {
+  const { c, a, rows } = sumImca();
+  set('sumCrane', hhmm(c)); set('sumCraneDec', decH(c) + ' hours');
+  set('sumAhc', hhmm(a)); set('sumAhcDec', decH(a) + ' hours');
+  const el = document.getElementById('sumBreakdown');
+  if (el) el.innerHTML = rows.map(r =>
+    '<div class="reading"><span>' + esc(r.short) + '</span><span>' + T('Kran') + ' <b>' + hhmm(r.lc) + '</b> &nbsp; AHC <b style="color:var(--blue)">' + hhmm(r.la) + '</b></span></div>'
+  ).join('');
+}
+
 function tick() {
   const l = L(); if (!l.craneOpen && !l.ahcOpen) return;
   const now = Date.now();
@@ -974,6 +1022,7 @@ function tick() {
   const ia = state.imca.ahcMs + (l.ahcOpen ? now - l.ahcOpen : 0);
   set('imcaCrane', hhmm(ic)); set('imcaCraneDec', decH(ic) + ' hours');
   set('imcaAhc', hhmm(ia)); set('imcaAhcDec', decH(ia) + ' hours');
+  renderSumImca();
 }
 
 /* ================= OCR (NOV 350t operatørskjerm, Siemens Simatic) ================= */
