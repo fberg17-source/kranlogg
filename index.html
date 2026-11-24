@@ -289,6 +289,42 @@
   <div id="history"></div>
 </section>
 
+<!-- 3b. MANUELT LØFT -->
+<section class="card">
+  <details>
+    <summary>LEGG INN LØFT MANUELT (glemte du å ta tiden?)</summary>
+    <div style="margin-top:12px;">
+      <label for="mlName">Operasjon</label>
+      <input type="text" id="mlName" placeholder="Skriv inn operasjon..." />
+    </div>
+    <div style="margin-top:10px;">
+      <label for="mlComment">Comments (initialer / kommentar)</label>
+      <input type="text" id="mlComment" placeholder="f.eks. MB RB" />
+    </div>
+    <div class="section-label">Krantid (påkrevd)</div>
+    <div class="row">
+      <div><label for="mlStart">Start kl.</label><input type="time" id="mlStart" step="60" /></div>
+      <div><label for="mlStop">Stopp kl.</label><input type="time" id="mlStop" step="60" /></div>
+    </div>
+    <div class="section-label">AHC-tid (valgfritt)</div>
+    <div class="row">
+      <div><label for="mlAhcStart">AHC start kl.</label><input type="time" id="mlAhcStart" step="60" /></div>
+      <div><label for="mlAhcStop">AHC stopp kl.</label><input type="time" id="mlAhcStop" step="60" /></div>
+    </div>
+    <div class="section-label">Tall (valgfritt)</div>
+    <div class="row">
+      <div><label for="mlHook">Max Hook Load (t)</label><input type="text" inputmode="decimal" id="mlHook" placeholder="f.eks. 1,7" /></div>
+      <div><label for="mlDepth">Max Wire Paid Out (m)</label><input type="text" inputmode="decimal" id="mlDepth" placeholder="f.eks. 1795" /></div>
+    </div>
+    <div class="row">
+      <div><label for="mlHcFrom">HC/CT wire fra (m)</label><input type="text" inputmode="decimal" id="mlHcFrom" placeholder="valgfritt" /></div>
+      <div><label for="mlHcTo">HC/CT wire til (m)</label><input type="text" inputmode="decimal" id="mlHcTo" placeholder="valgfritt" /></div>
+    </div>
+    <button class="btn-save" style="margin-top:12px;" onclick="saveManualLift()">💾 Lagre manuelt løft i historikk</button>
+    <div class="hint">Krantiden legges til IMCA-timene for turen, akkurat som et vanlig løft. Bruk for løft du gjorde i dag men glemte å ta tiden på.</div>
+  </details>
+</section>
+
 <!-- 4. BACKUP -->
 <section class="card">
   <details>
@@ -307,7 +343,7 @@
   </details>
 </section>
 
-<div class="version">Subsea Kranlogg V1.1 · Made by Frank Berg</div>
+<div class="version">Subsea Kranlogg V1.2 · Made by Frank Berg</div>
 
 <!-- VELKOMST (vises bare første gang) -->
 <div id="welcomeOverlay" class="help-overlay welcome" onclick="if (event.target === this) closeWelcome()">
@@ -320,7 +356,7 @@
     </svg>
     <h2>Subsea Kranlogg</h2>
     <div class="welcome-by">Made by Frank Berg</div>
-    <div class="welcome-ver">V1.1</div>
+    <div class="welcome-ver">V1.2</div>
     <button class="btn-amber" onclick="closeWelcome()">OK</button>
   </div>
 </div>
@@ -331,7 +367,7 @@
     <button class="btn-amber help-close" onclick="closeHelp()" id="helpCloseBtn">✕ Lukk hjelp</button>
 
     <div id="helpNo">
-      <h2>Hjelp – Subsea Kranlogg V1.1</h2>
+      <h2>Hjelp – Subsea Kranlogg V1.2</h2>
       <p>Kranlogg for 350t AHC-kranen og 50t-kranen. Appen fører IMCA-timer for hele turen og lager rapporten du limer inn i PC-loggen («New Operation Log Entry»).</p>
 
       <h3>1. Kom i gang</h3>
@@ -385,6 +421,14 @@
         <li>Avlesninger kan slettes med ✕ i listen.</li>
       </ul>
 
+      <h3>Legg inn løft manuelt</h3>
+      <ul>
+        <li>Glemte du å ta tiden? Bruk <b>«Legg inn løft manuelt»</b> (over backup).</li>
+        <li>Skriv <b>start- og stopp-klokkeslett</b>, og evt. AHC start/stopp, last og dybde. Lagres rett i historikken.</li>
+        <li>Krantiden legges til IMCA-timene, akkurat som et vanlig løft. Sletter du løftet igjen, påvirkes ikke IMCA.</li>
+        <li>Ment for løft du gjorde samme dag.</li>
+      </ul>
+
       <h3>7. Rapporten og desimaltimer</h3>
       <p>Tider i rapporten er i <b>desimaltimer</b>, som PC-loggen bruker. Minuttene deles på 60:</p>
       <table><tr><th>Vanlig tid</th><th>Desimaltimer</th></tr><tr><td>8:42</td><td>8.70</td></tr><tr><td>0:52</td><td>0.87</td></tr><tr><td>0:30</td><td>0.50</td></tr></table>
@@ -416,7 +460,7 @@
     </div>
 
     <div id="helpEn" style="display:none">
-      <h2>Help – Subsea Crane Log V1.1</h2>
+      <h2>Help – Subsea Crane Log V1.2</h2>
       <p>Crane log for the 350t AHC crane and the 50t crane. The app keeps IMCA hours for the whole trip and builds the report you paste into the PC log ("New Operation Log Entry").</p>
 
       <h3>1. Getting started</h3>
@@ -468,6 +512,14 @@
         <li>Enter Hook Load and/or Wire Paid Out and press <b>Add reading</b>. Both comma and point work.</li>
         <li>The AHC START/STOP buttons also work manually.</li>
         <li>Readings can be deleted with ✕ in the list.</li>
+      </ul>
+
+      <h3>Enter a lift manually</h3>
+      <ul>
+        <li>Forgot to run the timer? Use <b>"Legg inn løft manuelt"</b> (above backup).</li>
+        <li>Enter the <b>start and stop times</b>, and optionally AHC start/stop, load and depth. Saved straight to history.</li>
+        <li>The crane time is added to the IMCA hours, just like a normal lift. Deleting the lift later does not change IMCA.</li>
+        <li>Meant for lifts you did the same day.</li>
       </ul>
 
       <h3>7. The report and decimal hours</h3>
@@ -779,6 +831,50 @@ function delHistory(id) {
 }
 function copyHistory(id) { const h = state.history.find(x => x.id === id); if (h) copyText(reportText(h)); }
 
+/* ================= MANUELT LØFT (skrevet inn med start/stopp-klokkeslett) ================= */
+function saveManualLift() {
+  const g = id => document.getElementById(id);
+  const startT = timeToTs(g('mlStart').value), stopT = timeToTs(g('mlStop').value);
+  if (!startT || !stopT) { toast(T('Skriv inn både start- og stopp-klokkeslett'), true); return; }
+  if (stopT < startT) { toast(T('Stopp kan ikke være før start'), true); return; }
+  const craneMs = stopT - startT;
+
+  // AHC-tid (valgfritt): begge felt må fylles ut sammen
+  let ahcMs = 0;
+  const aStartStr = g('mlAhcStart').value, aStopStr = g('mlAhcStop').value;
+  if (aStartStr || aStopStr) {
+    const aS = timeToTs(aStartStr), aE = timeToTs(aStopStr);
+    if (!aS || !aE) { toast(T('Fyll inn både AHC start og AHC stopp – eller la begge stå tomme'), true); return; }
+    if (aE < aS) { toast(T('AHC stopp kan ikke være før AHC start'), true); return; }
+    ahcMs = aE - aS;
+    if (ahcMs > craneMs) { toast(T('AHC-tiden kan ikke være lengre enn krantiden'), true); return; }
+  }
+
+  // Tall (valgfritt)
+  const num = (id) => { const v = g(id).value.trim(); return v ? parseNum(v) : null; };
+  const hook = num('mlHook'), depth = num('mlDepth'), hcFrom = num('mlHcFrom'), hcTo = num('mlHcTo');
+  for (const [v, lbl] of [[hook, 'Hook Load'], [depth, 'Wire Paid Out'], [hcFrom, 'HC/CT fra'], [hcTo, 'HC/CT til']]) {
+    if (v !== null && isNaN(v)) { toast(T('Ugyldig tall') + ': ' + lbl, true); return; }
+  }
+  const maxT = CRANE_MAX[CRANES[root.active].crane];
+  if (hook !== null && hook > maxT && !confirm(T('Hook Load') + ' ' + hook + ' t ' + T('er over kranens maks') + ' (' + maxT + ' t). ' + T('Desimalfeil? Lagre likevel?'))) return;
+  let hcRanges = [];
+  if (hcFrom !== null && hcTo !== null) hcRanges = [[Math.min(hcFrom, hcTo), Math.max(hcFrom, hcTo)]];
+
+  if (!confirm(T('Lagre manuelt løft') + ' (' + clock(startT) + '–' + clock(stopT) + ', ' + hm(craneMs) + ') ' + T('i historikken?\nTiden legges til IMCA-timene.'))) return;
+
+  const now = Date.now();
+  state.imca.craneMs += craneMs;
+  state.imca.ahcMs += ahcMs;
+  state.history.unshift({
+    id: now, name: (g('mlName').value || '').trim(), comment: (g('mlComment').value || '').trim(),
+    start: startT, end: stopT, craneMs, ahcMs,
+    maxHook: hook, maxDepth: depth, hcRanges, readings: [], manual: true
+  });
+  ['mlName', 'mlComment', 'mlStart', 'mlStop', 'mlAhcStart', 'mlAhcStop', 'mlHook', 'mlDepth', 'mlHcFrom', 'mlHcTo'].forEach(i => g(i).value = '');
+  save(); render(); toast(T('Manuelt løft lagret'));
+}
+
 function resetTrip() {
   if (L().craneOpen || L().ahcOpen) { toast(T('Stopp kran/AHC først'), true); return; }
   if (!confirm(T('Nullstille IMCA-tellerne for ') + CRANES[root.active].short + T('-kranen (krantid og AHC-tid) til 00:00?\n\nTips: last ned backup først.'))) return;
@@ -862,7 +958,7 @@ function renderHistory(skipBankReset) {
     const when = h.start ? date(h.start) + ' · ' + clock(h.start) + ' – ' + (h.end ? clock(h.end) : '?') : T('Tidspunkt ikke registrert');
     return '<div class="hist"><h4><span>' + nr + '. ' + esc(h.name || T('Løft')) + '</span>' +
       '<button class="btn-outline btn-small" onclick="delHistory(' + h.id + ')">' + T('Slett') + '</button></h4>' +
-      '<div class="meta">' + esc(when) + '<br>Krantid ' + hm(h.craneMs) + ' (' + decH(h.craneMs) + ' h) · AHC ' + Math.round(h.ahcMs / MIN) + ' min (' + decH(h.ahcMs) + ' h)</div>' +
+      '<div class="meta">' + esc(when) + (h.manual ? ' · ' + T('manuelt ført') : '') + '<br>Krantid ' + hm(h.craneMs) + ' (' + decH(h.craneMs) + ' h) · AHC ' + Math.round(h.ahcMs / MIN) + ' min (' + decH(h.ahcMs) + ' h)</div>' +
       reportHtml(h) +
       '<button class="btn-outline" onclick="copyHistory(' + h.id + ')">📋 ' + T('Kopier rapport') + '</button></div>';
   }).join('');
